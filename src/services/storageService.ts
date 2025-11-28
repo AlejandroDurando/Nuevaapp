@@ -3,7 +3,6 @@ import { getFirestore, doc, getDoc, setDoc, updateDoc } from "firebase/firestore
 import { AppData, MonthlyData, Field } from '../types';
 import { DEFAULT_DATA, INITIAL_FIELDS } from '../constants';
 
-// --- CONFIGURACIÓN FIREBASE ---
 const firebaseConfig = {
   apiKey: "AIzaSyCGEW8VYiKC7yPy50O75WU31feOBSWjeW0",
   authDomain: "mis-finanzas-f8215.firebaseapp.com",
@@ -14,13 +13,10 @@ const firebaseConfig = {
   measurementId: "G-VVBP8RGCED"
 };
 
-// Inicializamos la DB
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// --- FUNCIONES ASÍNCRONAS (CLOUD) ---
-
-// 1. Cargar datos desde la Nube
+// 1. Cargar datos (MODO SEGURO)
 export const fetchAppData = async (userId: string): Promise<AppData> => {
   if (!userId) return DEFAULT_DATA;
   
@@ -29,33 +25,34 @@ export const fetchAppData = async (userId: string): Promise<AppData> => {
     const snap = await getDoc(userRef);
     if (snap.exists()) {
       const data = snap.data() as AppData;
-      // Parches de seguridad por si faltan campos en datos viejos
       if (!data.fields) data.fields = INITIAL_FIELDS;
       if (!data.months) data.months = {};
       return data;
     } else {
-      // Usuario nuevo: Crear documento inicial
-      await setDoc(userRef, DEFAULT_DATA);
-      return DEFAULT_DATA;
+      // SI NO EXISTE, NO CREAMOS NADA AÚN.
+      // Solo devolvemos los datos default para que la App los use en memoria.
+      return DEFAULT_DATA; 
     }
   } catch (e) {
     console.error("Error conectando con Firebase:", e);
+    // En caso de error (offline), devolvemos default sin romper nada
     return DEFAULT_DATA;
   }
 };
 
-// 2. Guardar datos completos (Respaldo general)
+// 2. Guardar datos completos
 export const saveAppData = async (userId: string, data: AppData) => {
   if (!userId) return;
   const userRef = doc(db, "users", userId);
   try {
+    // Usamos setDoc con merge para crear o actualizar
     await setDoc(userRef, data, { merge: true });
   } catch (e) {
     console.error("Error guardando en la nube:", e);
   }
 };
 
-// 3. Actualizar campos (Categorías/Colores)
+// 3. Actualizar campos
 export const updateFieldsInDb = async (userId: string, newFields: Field[]) => {
   if (!userId) return;
   const userRef = doc(db, "users", userId);
@@ -66,7 +63,7 @@ export const updateFieldsInDb = async (userId: string, newFields: Field[]) => {
   }
 };
 
-// 4. Actualizar tema (Light/Dark)
+// 4. Actualizar tema
 export const toggleThemeInDb = async (userId: string, currentTheme: 'light' | 'dark') => {
   const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
   if (userId) {

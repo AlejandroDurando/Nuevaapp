@@ -375,11 +375,21 @@ const BudgetPage = ({ appData, onSave }: { appData: AppData, onSave: (data: AppD
   );
 };
 
+// ... (imports y componentes anteriores siguen igual) ...
+
 // --- MAIN APP ---
 const App: React.FC = () => {
+  const [theme, setTheme] = useState<AppData['theme']>('dark');
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [appData, setAppData] = useState<AppData>(DEFAULT_APP_DATA);
+  
+  // Estado inicial con datos por defecto
+  const [appData, setAppData] = useState<AppData>({
+      theme: 'dark',
+      fields: INITIAL_FIELDS, // Iniciamos con los campos visuales directamente
+      months: {}
+  });
+  
   const [dataLoading, setDataLoading] = useState(false);
 
   // 1. Auth Listener
@@ -391,20 +401,20 @@ const App: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  // 2. Data Fetcher (Solo si hay usuario)
+  // 2. Data Fetcher (MEJORADO Y SEGURO)
   useEffect(() => {
     if (user) {
       setDataLoading(true);
       fetchAppData(user.uid).then((data) => {
-        // --- CAMBIO AQUÍ: SI VIENE VACÍO, USAMOS LOS DATOS POR DEFECTO ---
-        if (!data.fields || data.fields.length === 0) {
-           // Si la nube devuelve vacío, usamos los datos por defecto y guardamos
-           setAppData(DEFAULT_APP_DATA); 
-           saveAppData(user.uid, DEFAULT_APP_DATA); 
-        } else {
+        // Si la nube nos devuelve datos válidos (con campos), los usamos.
+        // Si no (porque es nuevo o error), usamos nuestros INITIAL_FIELDS locales.
+        if (data.fields && data.fields.length > 0) {
            setAppData(data);
+        } else {
+           // Mantenemos los datos por defecto en memoria, PERO NO GUARDAMOS EN NUBE AÚN.
+           // Esto evita sobrescribir datos reales si hubo un error de lectura.
+           setAppData(prev => ({ ...prev, ...data, fields: INITIAL_FIELDS }));
         }
-        // ------------------------------------------------------------------
         setDataLoading(false);
       });
     }
@@ -412,17 +422,16 @@ const App: React.FC = () => {
 
   // 3. Universal Save Handler
   const handleSaveData = async (newData: AppData) => {
-      setAppData(newData); // Optimistic Update (Instantáneo para el usuario)
+      setAppData(newData); // Actualización instantánea (UI)
       if (user) {
-          await saveAppData(user.uid, newData); // Guardado en Nube (Background)
+          await saveAppData(user.uid, newData); // Guardado en Nube
       }
   };
 
   const handleToggleTheme = async () => {
       const newTheme = appData.theme === 'light' ? 'dark' : 'light';
       const newData = { ...appData, theme: newTheme };
-      handleSaveData(newData);
-      if(user) await toggleThemeInDb(user.uid, appData.theme);
+      handleSaveData(newData); // Usamos el handler seguro
   };
 
   // --- ESTILOS LLUVIA Y SCROLL ---
@@ -436,7 +445,6 @@ const App: React.FC = () => {
     setTimeout(() => setLluvias(prev => prev.filter(x => x !== id)), 5000);
   };
   
-  // Inyectar estilos globales de lluvia
   useEffect(() => {
     if (!document.getElementById('money-rain-style')) {
         const style = document.createElement('style');
@@ -450,7 +458,7 @@ const App: React.FC = () => {
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white flex-col gap-4">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-            <p className="text-gray-400 text-sm">Cargando tus finanzas...</p>
+            <span className="text-gray-400 text-sm">Cargando tus finanzas...</span>
         </div>
     );
   }
