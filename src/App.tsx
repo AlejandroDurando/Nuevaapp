@@ -31,10 +31,12 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
-// DATOS POR DEFECTO (Para inicializar antes de cargar)
+// DATOS POR DEFECTO CON CAMPOS INICIALES
+import { INITIAL_FIELDS } from './constants'; // Asegúrate de importar esto
+
 const DEFAULT_APP_DATA: AppData = {
   theme: 'dark',
-  fields: [],
+  fields: INITIAL_FIELDS, // <--- Aquí cargamos los campos por defecto
   months: {}
 };
 
