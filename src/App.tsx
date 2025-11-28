@@ -394,7 +394,15 @@ const App: React.FC = () => {
     if (user) {
       setDataLoading(true);
       fetchAppData(user.uid).then((data) => {
-        setAppData(data);
+        // --- CAMBIO AQUÍ: SI VIENE VACÍO, USAMOS LOS DATOS POR DEFECTO ---
+        if (!data.fields || data.fields.length === 0) {
+           // Si la nube devuelve vacío, usamos los datos por defecto y guardamos
+           setAppData(DEFAULT_APP_DATA); 
+           saveAppData(user.uid, DEFAULT_APP_DATA); 
+        } else {
+           setAppData(data);
+        }
+        // ------------------------------------------------------------------
         setDataLoading(false);
       });
     }
