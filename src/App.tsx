@@ -7,7 +7,7 @@ import BudgetCharts from './components/BudgetCharts';
 import RecurringModal from './components/RecurringModal';
 import { YEARS, MONTHS } from './constants';
 import { getAppData, saveAppData, getMonthData, updateMonthData, updateFields } from './services/storageService';
-import { Field, AppData } from './types';
+import { Field, AppData } from './types.ts';
 import { ArrowLeft, Plus, DollarSign, AlertTriangle, PieChart as PieIcon, BarChart as BarIcon, Eye, EyeOff, LogOut, User, UserCircle } from 'lucide-react';
 
 // --- FIREBASE IMPORTS ---
@@ -98,26 +98,58 @@ const LoginPage = ({ onLogin }: { onLogin: () => void }) => {
   );
 };
 
-// --- HOME PAGE ---
+// 1. HOME PAGE (MEJORADA: Autocompletado de sueldo)
 const HomePage = ({ user }: { user: FirebaseUser | null }) => {
   const navigate = useNavigate();
-  const [year, setYear] = useState(new Date().getFullYear());
-  const [month, setMonth] = useState(new Date().getMonth());
+  
+  // Recuerda la última fecha seleccionada
+  const [year, setYear] = useState(() => {
+    const saved = localStorage.getItem('last_view_year');
+    return saved ? parseInt(saved) : new Date().getFullYear();
+  });
+
+  const [month, setMonth] = useState(() => {
+    const saved = localStorage.getItem('last_view_month');
+    return saved ? parseInt(saved) : new Date().getMonth();
+  });
+
   const [salary, setSalary] = useState('');
   const displayName = user?.displayName || (user?.isAnonymous ? 'Invitado' : 'Usuario');
   const photoURL = user?.photoURL;
 
+  // EFECTO: Cargar datos del mes O usar el último sueldo conocido
   useEffect(() => {
     const data = getMonthData(year, month + 1);
-    if (data.salary > 0) setSalary(formatNumberDisplay(data.salary));
-    else setSalary('');
+    
+    if (data.salary > 0) {
+      // Si este mes ya tiene un sueldo guardado, lo mostramos
+      setSalary(formatNumberDisplay(data.salary));
+    } else {
+      // Si este mes está vacío, buscamos el "último sueldo conocido" en la memoria
+      const lastSalary = localStorage.getItem('last_known_salary');
+      if (lastSalary) {
+        setSalary(formatNumberDisplay(parseInt(lastSalary)));
+      } else {
+        setSalary('');
+      }
+    }
   }, [year, month]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Guardamos la fecha para volver aquí luego
+    localStorage.setItem('last_view_year', year.toString());
+    localStorage.setItem('last_view_month', month.toString());
+
     const salaryNum = parseNumberInput(salary);
     if (salaryNum > 0) {
+      // 1. Guardamos el sueldo en ESTE mes
       updateMonthData(year, month + 1, { salary: salaryNum });
+      
+      // 2. Guardamos este sueldo como el "por defecto" para el futuro
+      localStorage.setItem('last_known_salary', salaryNum.toString());
+      
       navigate(`/budget?year=${year}&month=${month + 1}`);
     }
   };
@@ -127,24 +159,90 @@ const HomePage = ({ user }: { user: FirebaseUser | null }) => {
     setSalary(formatNumberDisplay(raw));
   };
 
+  const handleLogout = () => {
+    signOut(auth);
+  };
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[80vh]">
       <div className="w-full max-w-md bg-white dark:bg-dark-card p-8 rounded-2xl shadow-xl border dark:border-gray-700">
+        
+        {/* Header de Usuario */}
         <div className="flex items-center justify-between mb-6 pb-6 border-b border-gray-100 dark:border-gray-700">
             <div className="flex items-center gap-3">
-                {photoURL ? <img src={photoURL} className="w-10 h-10 rounded-full border-2 border-blue-500" alt="profile" /> : <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center border-2 border-gray-300 dark:border-gray-600"><User size={20} className="text-gray-500 dark:text-gray-300" /></div>}
-                <div className="text-left"><p className="text-xs text-gray-500 dark:text-gray-400">Hola,</p><p className="text-sm font-bold text-gray-800 dark:text-white truncate max-w-[150px]">{displayName}</p></div>
+                {photoURL ? (
+                    <img src={photoURL} alt="Perfil" className="w-10 h-10 rounded-full border-2 border-blue-500" />
+                ) : (
+                    <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center border-2 border-gray-300 dark:border-gray-600">
+                        <User size={20} className="text-gray-500 dark:text-gray-300" />
+                    </div>
+                )}
+                <div className="text-left">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Hola,</p>
+                    <p className="text-sm font-bold text-gray-800 dark:text-white truncate max-w-[150px]">
+                        {displayName}
+                    </p>
+                </div>
             </div>
-            <button onClick={() => signOut(auth)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"><LogOut size={20} /></button>
+            <button 
+                onClick={handleLogout}
+                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                title="Cerrar Sesión"
+            >
+                <LogOut size={20} />
+            </button>
         </div>
-        <div className="text-center mb-8"><h2 className="text-2xl font-bold mb-2 text-gray-800 dark:text-white">Configurar Mes</h2><p className="text-gray-500 dark:text-gray-400">Selecciona fecha y sueldo</p></div>
+
+        <div className="text-center mb-8">
+          <h2 className="text-2xl font-bold mb-2 text-gray-800 dark:text-white">Configurar Mes</h2>
+          <p className="text-gray-500 dark:text-gray-400">Selecciona fecha y sueldo</p>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-2 gap-4">
-            <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Año</label><select value={year} onChange={(e) => setYear(Number(e.target.value))} className="w-full p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border dark:border-gray-700 dark:text-white">{YEARS.map(y => <option key={y} value={y}>{y}</option>)}</select></div>
-            <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mes</label><select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="w-full p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border dark:border-gray-700 dark:text-white">{MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}</select></div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Año</label>
+              <select 
+                value={year} 
+                onChange={(e) => setYear(Number(e.target.value))}
+                className="w-full p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 dark:text-white"
+              >
+                {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mes</label>
+              <select 
+                value={month} 
+                onChange={(e) => setMonth(Number(e.target.value))}
+                className="w-full p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 dark:text-white"
+              >
+                {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
+              </select>
+            </div>
           </div>
-          <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sueldo Mensual</label><div className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span><input type="text" value={salary} onChange={handleSalaryChange} className="w-full p-3 pl-8 rounded-lg bg-gray-50 dark:bg-gray-800 border dark:border-gray-700 dark:text-white text-lg font-semibold" placeholder="0" required/></div></div>
-          <button type="submit" className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg transform transition hover:scale-[1.02]">Comenzar</button>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sueldo Mensual</label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+              <input 
+                type="text" 
+                value={salary}
+                onChange={handleSalaryChange}
+                className="w-full p-3 pl-8 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 dark:text-white text-lg font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                placeholder="0"
+                required
+              />
+            </div>
+          </div>
+
+          <button 
+            type="submit"
+            className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg transform transition hover:scale-[1.02] active:scale-95"
+          >
+            Continuar
+          </button>
         </form>
       </div>
     </div>
