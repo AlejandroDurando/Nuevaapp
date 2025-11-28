@@ -5,9 +5,10 @@ interface LayoutProps {
   children: React.ReactNode;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
+  onMoneyClick?: () => void; // <--- NUEVA PROPIEDAD
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, theme, toggleTheme }) => {
+const Layout: React.FC<LayoutProps> = ({ children, theme, toggleTheme, onMoneyClick }) => {
   const [showHelp, setShowHelp] = useState(false);
 
   // Determinar si es modo claro
@@ -16,9 +17,6 @@ const Layout: React.FC<LayoutProps> = ({ children, theme, toggleTheme }) => {
   return (
     <div className={theme}>
       <div 
-        // ESTE ES EL CAMBIO CLAVE:
-        // Forzamos a que no haya imagen de fondo en modo claro.
-        // Esto sobrescribe cualquier estilo global que pueda estar molestando.
         style={{ backgroundImage: isLight ? 'none' : undefined, backgroundColor: isLight ? '#f3f4f6' : undefined }}
         className="min-h-screen bg-gray-100 dark:bg-dark-bg text-gray-900 dark:text-dark-text transition-colors duration-300"
       >
@@ -37,31 +35,27 @@ const Layout: React.FC<LayoutProps> = ({ children, theme, toggleTheme }) => {
                 <section>
                   <h3 className="text-blue-500 font-bold text-lg mb-2">Gastos para Vivir (50%)</h3>
                   <p>
-                    "Esta parte de tu sueldo está destinada a cubrir todo lo esencial para tu día a día. Incluye vivienda, comida, transporte, servicios, salud, educación y cualquier gasto necesario para mantener tu calidad de vida. La idea es que esta categoría represente tus responsabilidades básicas sin afectar tus otros objetivos financieros."
+                    "Esta parte de tu sueldo está destinada a cubrir todo lo esencial para tu día a día. Incluye vivienda, comida, transporte, servicios, salud, educación y cualquier gasto necesario para mantener tu calidad de vida."
                   </p>
                 </section>
-                
                 <section>
                   <h3 className="text-purple-500 font-bold text-lg mb-2">Inversión (25%)</h3>
                   <p>
-                    "Este porcentaje se asigna a todo aquello que pueda hacer crecer tu dinero o tus habilidades. Podés usarlo para inversiones tradicionales, oportunidades de negocio, proyectos personales o incluso formación profesional. Todo lo que agregue valor a largo plazo entra acá. Es una forma de construir tu futuro y aumentar tu patrimonio."
+                    "Este porcentaje se asigna a todo aquello que pueda hacer crecer tu dinero o tus habilidades. Podés usarlo para inversiones tradicionales, oportunidades de negocio o formación profesional."
                   </p>
                 </section>
-
                 <section>
                   <h3 className="text-pink-500 font-bold text-lg mb-2">Disfrute (15%)</h3>
                   <p>
-                    "Este porcentaje es para vos, para que puedas disfrutar sin culpa. Incluye salidas, viajes, hobbies, ropa, tecnología, o cualquier gusto personal. Es importante darse espacio para vivir y disfrutar, y esta parte del presupuesto te ayuda a hacerlo sin afectar tus objetivos financieros."
+                    "Este porcentaje es para vos, para que puedas disfrutar sin culpa. Incluye salidas, viajes, hobbies, ropa, tecnología, o cualquier gusto personal."
                   </p>
                 </section>
-
                 <section>
                   <h3 className="text-green-500 font-bold text-lg mb-2">Fondo de Seguridad (10%)</h3>
                   <p>
-                    "Este monto está pensado como un colchón para imprevistos. Sirve para emergencias médicas, reparaciones del hogar, gastos urgentes o cualquier situación inesperada. Contar con este fondo te da tranquilidad y estabilidad, evitando que tengas que endeudarte cuando aparece algo fuera del plan."
+                    "Este monto está pensado como un colchón para imprevistos. Sirve para emergencias médicas, reparaciones del hogar o gastos urgentes."
                   </p>
                 </section>
-                
                 <div className="pt-4 text-xs text-gray-500 italic text-center border-t dark:border-gray-800">
                   *Podés editar los porcentajes a tu gusto en la sección "Editar" de cada categoría.
                 </div>
@@ -73,10 +67,24 @@ const Layout: React.FC<LayoutProps> = ({ children, theme, toggleTheme }) => {
         {/* Header */}
         <header className="sticky top-0 z-40 bg-white/80 dark:bg-dark-card/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-4 py-3">
           <div className="max-w-3xl mx-auto flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl font-bold text-blue-600 dark:text-blue-400">Finanzas Personales</h1>
+            
+            {/* Título y Billete (Ahora juntos en el flujo) */}
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg md:text-xl font-bold text-blue-600 dark:text-blue-400 truncate">
+                Finanzas Personales
+              </h1>
+              {/* EL BILLETE AHORA ESTÁ AQUÍ, NO FLOTANDO */}
+              <button 
+                onClick={onMoneyClick} 
+                className="text-2xl hover:scale-110 transition-transform cursor-pointer"
+                title="Lluvia de dinero"
+              >
+                💵
+              </button>
             </div>
-            <div className="flex items-center gap-3">
+
+            {/* Botones de Ayuda y Tema */}
+            <div className="flex items-center gap-2 sm:gap-3">
               <button 
                 onClick={() => setShowHelp(true)}
                 className="p-2 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
