@@ -7,7 +7,8 @@ import MoneyRain from './components/MoneyRain';
 import BudgetCharts from './components/BudgetCharts';
 import RecurringModal from './components/RecurringModal';
 import { YEARS, MONTHS, INITIAL_FIELDS } from './constants';
-import { getAppData, saveAppData, getMonthData, updateMonthData, updateFields, fetchAppData, toggleThemeInDb } from './services/storageService';
+// --- IMPORTACIÓN CORREGIDA: Solo traemos lo que existe en el nuevo servicio ---
+import { fetchAppData, saveAppData, toggleThemeInDb } from './services/storageService';
 import { Field, AppData, MonthlyData } from './types';
 import { ArrowLeft, Plus, DollarSign, AlertTriangle, PieChart as PieIcon, BarChart as BarIcon, Eye, EyeOff, LogOut, User, UserCircle } from 'lucide-react';
 
@@ -18,15 +19,13 @@ import { getAuth, signInWithPopup, signInAnonymously, GoogleAuthProvider, signOu
 // --- FIREBASE CONFIGURATION ---
 const firebaseConfig = {
   apiKey: "AIzaSyCGEW8VYiKC7yPy50O75WU31feOBSWjeW0",
-  authDomain: "finanzas-personales.vercel.app", // Asegúrate que coincida con tu dominio o usa el de firebaseapp
+  authDomain: "finanzas-personales.vercel.app", // O tu dominio de firebaseapp.com
   projectId: "mis-finanzas-f8215",
   storageBucket: "mis-finanzas-f8215.firebasestorage.app",
   messagingSenderId: "773839724132",
   appId: "1:773839724132:web:f4b3e7d81e10f51554c971",
   measurementId: "G-VVBP8RGCED"
 };
-
-// IMPORTANTE: Si usaste un dominio personalizado en Vercel, asegúrate de agregarlo en Firebase Auth > Settings > Authorized Domains
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -51,6 +50,7 @@ const parseNumberInput = (val: string): number => {
   return clean === '' ? 0 : parseFloat(clean);
 };
 
+// Helper local para obtener datos del mes sin llamar al servicio viejo
 const getMonthDataSafe = (appData: AppData, year: number, month: number): MonthlyData => {
     const key = `${year}-${String(month).padStart(2, '0')}`;
     return appData.months[key] || { salary: 0, expenses: {}, expensesUsd: {}, paidStatus: {}, extras: {} };
@@ -130,6 +130,7 @@ const HomePage = ({ user, appData, onSave }: { user: FirebaseUser | null, appDat
   const photoURL = user?.photoURL;
 
   useEffect(() => {
+    // Usamos el helper local seguro
     const monthData = getMonthDataSafe(appData, year, month + 1);
     
     if (monthData.salary > 0) {
@@ -151,6 +152,7 @@ const HomePage = ({ user, appData, onSave }: { user: FirebaseUser | null, appDat
       const key = `${year}-${String(month + 1).padStart(2, '0')}`;
       const currentMonth = appData.months[key] || { salary: 0, expenses: {}, expensesUsd: {}, paidStatus: {}, extras: {} };
       
+      // Actualizamos el estado global directamente
       const newData = {
           ...appData,
           months: {
@@ -219,7 +221,7 @@ const BudgetPage = ({ appData, onSave }: { appData: AppData, onSave: (data: AppD
     }
   }, [newFieldId, appData.fields.length]);
 
-  // Logic for recurring items (Safe execution)
+  // Recurrentes: Usamos onSave directamente
   useEffect(() => {
     if (!monthData.recurringApplied && appData.fields.length > 0) {
       const foundRecurring: any[] = [];
@@ -238,7 +240,7 @@ const BudgetPage = ({ appData, onSave }: { appData: AppData, onSave: (data: AppD
           onSave(newData);
       }
     }
-  }, [monthKey]); // Dependencia simplificada
+  }, [monthKey]); 
 
   const updateMonth = (updates: Partial<MonthlyData>) => {
       const newData = { 
@@ -433,8 +435,6 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // CONDICIÓN DE BLOQUEO MEJORADA:
-  // No mostramos NADA hasta que sepamos quién es el usuario Y tengamos sus datos cargados.
   if (authLoading || (user && !dataInitialized)) {
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white flex-col gap-4">
