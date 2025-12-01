@@ -6,9 +6,11 @@ import FieldAccordion from './components/FieldAccordion';
 import MoneyRain from './components/MoneyRain';
 import BudgetCharts from './components/BudgetCharts';
 import RecurringModal from './components/RecurringModal';
-import { YEARS, MONTHS, INITIAL_FIELDS } from './constants';
-// --- IMPORTACIÓN CORREGIDA: Solo traemos lo que existe en el nuevo servicio ---
+// ----------------------------------------------------------------------
+// IMPORTANTE: Solo importamos lo que REALMENTE existe en storageService.ts
+// ----------------------------------------------------------------------
 import { fetchAppData, saveAppData, toggleThemeInDb } from './services/storageService';
+import { YEARS, MONTHS, INITIAL_FIELDS } from './constants';
 import { Field, AppData, MonthlyData } from './types';
 import { ArrowLeft, Plus, DollarSign, AlertTriangle, PieChart as PieIcon, BarChart as BarIcon, Eye, EyeOff, LogOut, User, UserCircle } from 'lucide-react';
 
@@ -19,7 +21,7 @@ import { getAuth, signInWithPopup, signInAnonymously, GoogleAuthProvider, signOu
 // --- FIREBASE CONFIGURATION ---
 const firebaseConfig = {
   apiKey: "AIzaSyCGEW8VYiKC7yPy50O75WU31feOBSWjeW0",
-  authDomain: "finanzas-personales.vercel.app", // O tu dominio de firebaseapp.com
+  authDomain: "finanzas-personales.vercel.app", 
   projectId: "mis-finanzas-f8215",
   storageBucket: "mis-finanzas-f8215.firebasestorage.app",
   messagingSenderId: "773839724132",
@@ -50,7 +52,7 @@ const parseNumberInput = (val: string): number => {
   return clean === '' ? 0 : parseFloat(clean);
 };
 
-// Helper local para obtener datos del mes sin llamar al servicio viejo
+// Helper local seguro (NO IMPORTADO)
 const getMonthDataSafe = (appData: AppData, year: number, month: number): MonthlyData => {
     const key = `${year}-${String(month).padStart(2, '0')}`;
     return appData.months[key] || { salary: 0, expenses: {}, expensesUsd: {}, paidStatus: {}, extras: {} };
@@ -130,7 +132,6 @@ const HomePage = ({ user, appData, onSave }: { user: FirebaseUser | null, appDat
   const photoURL = user?.photoURL;
 
   useEffect(() => {
-    // Usamos el helper local seguro
     const monthData = getMonthDataSafe(appData, year, month + 1);
     
     if (monthData.salary > 0) {
@@ -152,7 +153,6 @@ const HomePage = ({ user, appData, onSave }: { user: FirebaseUser | null, appDat
       const key = `${year}-${String(month + 1).padStart(2, '0')}`;
       const currentMonth = appData.months[key] || { salary: 0, expenses: {}, expensesUsd: {}, paidStatus: {}, extras: {} };
       
-      // Actualizamos el estado global directamente
       const newData = {
           ...appData,
           months: {
@@ -221,7 +221,7 @@ const BudgetPage = ({ appData, onSave }: { appData: AppData, onSave: (data: AppD
     }
   }, [newFieldId, appData.fields.length]);
 
-  // Recurrentes: Usamos onSave directamente
+  // Recurrentes
   useEffect(() => {
     if (!monthData.recurringApplied && appData.fields.length > 0) {
       const foundRecurring: any[] = [];
@@ -369,7 +369,6 @@ const App: React.FC = () => {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [appData, setAppData] = useState<AppData>(DEFAULT_APP_DATA);
-  // NUEVO ESTADO: Bandera para bloquear renderizado hasta cargar datos
   const [dataInitialized, setDataInitialized] = useState(false);
 
   // 1. Auth Listener
@@ -381,21 +380,16 @@ const App: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  // 2. Data Fetcher (CON BLOQUEO DE INICIALIZACIÓN)
+  // 2. Data Fetcher
   useEffect(() => {
     if (user) {
-      // Reseteamos la bandera al cambiar de usuario
       setDataInitialized(false);
-      
       fetchAppData(user.uid).then((data) => {
-        // Lógica para combinar datos o usar defaults
         if (data.fields && data.fields.length > 0) {
            setAppData(data);
         } else {
-           // Si viene vacío, usamos los defaults (pero no guardamos automáticamente aún)
            setAppData(prev => ({ ...prev, ...data, fields: INITIAL_FIELDS }));
         }
-        // ¡AHORA SÍ! Permitimos que la app se muestre
         setDataInitialized(true);
       });
     }
@@ -415,7 +409,7 @@ const App: React.FC = () => {
       handleSaveData(newData); 
   };
 
-  // --- ESTILOS LLUVIA Y SCROLL ---
+  // --- ESTILOS LLUVIA ---
   const [mounted, setMounted] = useState(false);
   const [lluvias, setLluvias] = useState<number[]>([]);
   useEffect(() => { setMounted(true); }, []);
