@@ -6,9 +6,8 @@ import FieldAccordion from './components/FieldAccordion';
 import MoneyRain from './components/MoneyRain';
 import BudgetCharts from './components/BudgetCharts';
 import RecurringModal from './components/RecurringModal';
-import { YEARS, MONTHS } from './constants';
-// IMPORTANTE: Ahora importamos las funciones nuevas del servicio
-import { fetchAppData, saveAppData, toggleThemeInDb } from './services/storageService';
+import { YEARS, MONTHS, INITIAL_FIELDS } from './constants';
+import { getAppData, saveAppData, getMonthData, updateMonthData, updateFields, fetchAppData, toggleThemeInDb } from './services/storageService';
 import { Field, AppData, MonthlyData } from './types';
 import { ArrowLeft, Plus, DollarSign, AlertTriangle, PieChart as PieIcon, BarChart as BarIcon, Eye, EyeOff, LogOut, User, UserCircle } from 'lucide-react';
 
@@ -19,7 +18,7 @@ import { getAuth, signInWithPopup, signInAnonymously, GoogleAuthProvider, signOu
 // --- FIREBASE CONFIGURATION ---
 const firebaseConfig = {
   apiKey: "AIzaSyCGEW8VYiKC7yPy50O75WU31feOBSWjeW0",
-  authDomain: "mis-finanzas-f8215.firebaseapp.com",
+  authDomain: "finanzas-personales.vercel.app", // Asegúrate que coincida con tu dominio o usa el de firebaseapp
   projectId: "mis-finanzas-f8215",
   storageBucket: "mis-finanzas-f8215.firebasestorage.app",
   messagingSenderId: "773839724132",
@@ -27,16 +26,15 @@ const firebaseConfig = {
   measurementId: "G-VVBP8RGCED"
 };
 
+// IMPORTANTE: Si usaste un dominio personalizado en Vercel, asegúrate de agregarlo en Firebase Auth > Settings > Authorized Domains
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
-// DATOS POR DEFECTO CON CAMPOS INICIALES
-import { INITIAL_FIELDS } from './constants'; // Asegúrate de importar esto
-
 const DEFAULT_APP_DATA: AppData = {
   theme: 'dark',
-  fields: INITIAL_FIELDS, // <--- Aquí cargamos los campos por defecto
+  fields: [],
   months: {}
 };
 
@@ -53,7 +51,6 @@ const parseNumberInput = (val: string): number => {
   return clean === '' ? 0 : parseFloat(clean);
 };
 
-// Helper para obtener datos del mes de forma segura
 const getMonthDataSafe = (appData: AppData, year: number, month: number): MonthlyData => {
     const key = `${year}-${String(month).padStart(2, '0')}`;
     return appData.months[key] || { salary: 0, expenses: {}, expensesUsd: {}, paidStatus: {}, extras: {} };
@@ -118,7 +115,6 @@ const LoginPage = ({ onLogin }: { onLogin: () => void }) => {
 const HomePage = ({ user, appData, onSave }: { user: FirebaseUser | null, appData: AppData, onSave: (data: AppData) => void }) => {
   const navigate = useNavigate();
   
-  // Memoria local SOLO para la navegación (UX), no para datos
   const [year, setYear] = useState(() => {
     const saved = localStorage.getItem('last_view_year');
     return saved ? parseInt(saved) : new Date().getFullYear();
@@ -133,14 +129,12 @@ const HomePage = ({ user, appData, onSave }: { user: FirebaseUser | null, appDat
   const displayName = user?.displayName || (user?.isAnonymous ? 'Invitado' : 'Usuario');
   const photoURL = user?.photoURL;
 
-  // Cargar datos desde appData (Nube)
   useEffect(() => {
     const monthData = getMonthDataSafe(appData, year, month + 1);
     
     if (monthData.salary > 0) {
       setSalary(formatNumberDisplay(monthData.salary));
     } else {
-      // Si está vacío, intentar usar el último guardado en local para UX
       const lastSalary = localStorage.getItem('last_known_salary');
       if (lastSalary) setSalary(formatNumberDisplay(parseInt(lastSalary)));
       else setSalary('');
@@ -154,7 +148,6 @@ const HomePage = ({ user, appData, onSave }: { user: FirebaseUser | null, appDat
 
     const salaryNum = parseNumberInput(salary);
     if (salaryNum > 0) {
-      // Actualizamos AppData
       const key = `${year}-${String(month + 1).padStart(2, '0')}`;
       const currentMonth = appData.months[key] || { salary: 0, expenses: {}, expensesUsd: {}, paidStatus: {}, extras: {} };
       
@@ -166,7 +159,6 @@ const HomePage = ({ user, appData, onSave }: { user: FirebaseUser | null, appDat
           }
       };
 
-      // Guardamos en Nube y Estado
       onSave(newData);
       localStorage.setItem('last_known_salary', salaryNum.toString());
       
@@ -210,7 +202,6 @@ const BudgetPage = ({ appData, onSave }: { appData: AppData, onSave: (data: AppD
   const year = Number(searchParams.get('year'));
   const month = Number(searchParams.get('month'));
   
-  // Derivamos monthData directamente de appData (estado global)
   const monthKey = `${year}-${String(month).padStart(2, '0')}`;
   const monthData = appData.months[monthKey] || { salary: 0, expenses: {}, expensesUsd: {}, paidStatus: {}, extras: {} };
 
@@ -228,9 +219,9 @@ const BudgetPage = ({ appData, onSave }: { appData: AppData, onSave: (data: AppD
     }
   }, [newFieldId, appData.fields.length]);
 
-  // Verificar recurrentes (Solo si no se aplicaron aún)
+  // Logic for recurring items (Safe execution)
   useEffect(() => {
-    if (!monthData.recurringApplied) {
+    if (!monthData.recurringApplied && appData.fields.length > 0) {
       const foundRecurring: any[] = [];
       appData.fields.forEach(field => {
         field.categories.forEach(cat => {
@@ -243,14 +234,12 @@ const BudgetPage = ({ appData, onSave }: { appData: AppData, onSave: (data: AppD
       });
       if (foundRecurring.length > 0) { setRecurringItems(foundRecurring); setShowRecurringModal(true); } 
       else { 
-          // Marcar como aplicado sin cambiar nada más
           const newData = { ...appData, months: { ...appData.months, [monthKey]: { ...monthData, recurringApplied: true } } };
           onSave(newData);
       }
     }
-  }, [monthKey]); // Dependencia clave: cambio de mes
+  }, [monthKey]); // Dependencia simplificada
 
-  // Helper para actualizar datos del mes
   const updateMonth = (updates: Partial<MonthlyData>) => {
       const newData = { 
           ...appData, 
@@ -286,8 +275,6 @@ const BudgetPage = ({ appData, onSave }: { appData: AppData, onSave: (data: AppD
     const extrasMap = { ...monthData.extras, [fieldId]: newExtras };
     updateMonth({ extras: extrasMap });
   };
-  
-  // Actualizar campos (Global)
   const handleSaveField = (updatedField: Field) => {
     const newFields = appData.fields.map(f => f.id === updatedField.id ? updatedField : f);
     const newData = { ...appData, fields: newFields };
@@ -375,22 +362,13 @@ const BudgetPage = ({ appData, onSave }: { appData: AppData, onSave: (data: AppD
   );
 };
 
-// ... (imports y componentes anteriores siguen igual) ...
-
 // --- MAIN APP ---
 const App: React.FC = () => {
-  const [theme, setTheme] = useState<AppData['theme']>('dark');
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  
-  // Estado inicial con datos por defecto
-  const [appData, setAppData] = useState<AppData>({
-      theme: 'dark',
-      fields: INITIAL_FIELDS, // Iniciamos con los campos visuales directamente
-      months: {}
-  });
-  
-  const [dataLoading, setDataLoading] = useState(false);
+  const [appData, setAppData] = useState<AppData>(DEFAULT_APP_DATA);
+  // NUEVO ESTADO: Bandera para bloquear renderizado hasta cargar datos
+  const [dataInitialized, setDataInitialized] = useState(false);
 
   // 1. Auth Listener
   useEffect(() => {
@@ -401,37 +379,38 @@ const App: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  // 2. Data Fetcher (MEJORADO Y SEGURO)
+  // 2. Data Fetcher (CON BLOQUEO DE INICIALIZACIÓN)
   useEffect(() => {
     if (user) {
-      setDataLoading(true);
+      // Reseteamos la bandera al cambiar de usuario
+      setDataInitialized(false);
+      
       fetchAppData(user.uid).then((data) => {
-        // Si la nube nos devuelve datos válidos (con campos), los usamos.
-        // Si no (porque es nuevo o error), usamos nuestros INITIAL_FIELDS locales.
+        // Lógica para combinar datos o usar defaults
         if (data.fields && data.fields.length > 0) {
            setAppData(data);
         } else {
-           // Mantenemos los datos por defecto en memoria, PERO NO GUARDAMOS EN NUBE AÚN.
-           // Esto evita sobrescribir datos reales si hubo un error de lectura.
+           // Si viene vacío, usamos los defaults (pero no guardamos automáticamente aún)
            setAppData(prev => ({ ...prev, ...data, fields: INITIAL_FIELDS }));
         }
-        setDataLoading(false);
+        // ¡AHORA SÍ! Permitimos que la app se muestre
+        setDataInitialized(true);
       });
     }
   }, [user]);
 
   // 3. Universal Save Handler
   const handleSaveData = async (newData: AppData) => {
-      setAppData(newData); // Actualización instantánea (UI)
+      setAppData(newData); 
       if (user) {
-          await saveAppData(user.uid, newData); // Guardado en Nube
+          await saveAppData(user.uid, newData); 
       }
   };
 
   const handleToggleTheme = async () => {
       const newTheme = appData.theme === 'light' ? 'dark' : 'light';
       const newData = { ...appData, theme: newTheme };
-      handleSaveData(newData); // Usamos el handler seguro
+      handleSaveData(newData); 
   };
 
   // --- ESTILOS LLUVIA Y SCROLL ---
@@ -454,7 +433,9 @@ const App: React.FC = () => {
     }
   }, []);
 
-  if (authLoading || (user && dataLoading)) {
+  // CONDICIÓN DE BLOQUEO MEJORADA:
+  // No mostramos NADA hasta que sepamos quién es el usuario Y tengamos sus datos cargados.
+  if (authLoading || (user && !dataInitialized)) {
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white flex-col gap-4">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
