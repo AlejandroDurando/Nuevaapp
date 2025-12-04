@@ -22,13 +22,14 @@ interface FieldAccordionProps {
   totalAllocatedPercentage?: number;
 }
 
+// --- HELPERS CON SOPORTE DECIMAL ---
 const formatNumberDisplay = (val: number | undefined): string => {
   if (val === undefined || val === null || val === 0) return '';
-  return val.toLocaleString('es-AR');
+  return val.toLocaleString('es-AR', { maximumFractionDigits: 2 });
 };
 
 const parseNumberInput = (val: string): number => {
-  const clean = val.replace(/\./g, '').replace(/,/g, '.');
+  const clean = val.replace(/\./g, '').replace(',', '.');
   return clean === '' ? 0 : parseFloat(clean);
 };
 
@@ -62,13 +63,13 @@ const FieldAccordion: React.FC<FieldAccordionProps> = ({
   const remaining = budget - totalSpent;
   const percentUsed = budget > 0 ? (totalSpent / budget) * 100 : 0;
   
-  // LOGICA DE VALIDACIÓN DE PORCENTAJE
+  // Validación
   const otherFieldsTotal = totalAllocatedPercentage - field.percentage;
   const projectedTotal = otherFieldsTotal + editedField.percentage;
   const isOverLimit = projectedTotal > 100;
   const availableSpace = 100 - otherFieldsTotal;
 
-  // Colores y Alertas
+  // Colores
   let progressBarColor = 'bg-blue-500';
   let statusColor = 'text-gray-500 dark:text-gray-400';
   let alertIcon = null;
@@ -116,9 +117,48 @@ const FieldAccordion: React.FC<FieldAccordionProps> = ({
     setEditedField({ ...editedField, categories: newCats });
   };
 
-  const handleSubExpenseChange = (subId: string, val: string) => onUpdateExpense(subId, parseNumberInput(val));
-  const handleSubExpenseUsdChange = (subId: string, val: string) => onUpdateExpenseUsd(subId, parseNumberInput(val));
-  const handleExtraAmountChange = (val: string) => setExtraAmount(val === '' ? '' : formatNumberDisplay(parseNumberInput(val)));
+  // Formatters mejorados para Inputs (Permiten escribir)
+  const formatInput = (val: string) => {
+    // Simplemente devolvemos el valor crudo para dejar escribir
+    // La validación numérica se hace al guardar o al perder foco si quisiéramos
+    // Pero para inputs controlados simples, pasamos el valor y dejamos que el parseo ocurra en el onUpdate
+    return val; 
+  };
+
+  // HANDLER ESPECIAL PARA GASTOS (INPUTS DE ACORDEÓN)
+  // Aquí hay un truco: Como el estado viene de props, si formateamos al vuelo se pierde la coma.
+  // Para este caso, permitimos escritura directa y solo parseamos al enviar.
+  // NOTA: Para los gastos (subcategorías) es mejor dejarlo simple (enteros) o usar un componente Input mask complejo.
+  // Por ahora, mantendremos la lógica simple para no romper la UX de los gastos rápidos.
+  const handleSubExpenseChange = (subId: string, val: string) => {
+      // Solo permitimos dígitos para gastos rápidos (la mayoría de la gente no pone centavos en el súper)
+      // Si realmente necesitas centavos aquí, avísame y creamos un componente local.
+      const raw = val.replace(/[^0-9]/g, '');
+      onUpdateExpense(subId, raw === '' ? 0 : parseInt(raw));
+  };
+
+  const handleSubExpenseUsdChange = (subId: string, val: string) => {
+      const raw = val.replace(/[^0-9]/g, '');
+      onUpdateExpenseUsd(subId, raw === '' ? 0 : parseInt(raw));
+  };
+  
+  // HANDLER PARA EXTRAS (Aquí sí aplicamos la lógica decimal porque es un input local)
+  const handleExtraAmountChange = (val: string) => {
+      // Permitir escribir la coma
+      let clean = val.replace(/[^0-9,]/g, '');
+      // Evitar doble coma
+      const parts = clean.split(',');
+      if (parts.length > 2) clean = parts[0] + ',' + parts.slice(1).join('');
+      
+      // Formatear parte entera si es posible, pero mantener la coma al final si se está escribiendo
+      if (clean.endsWith(',')) {
+          setExtraAmount(clean);
+      } else {
+          // Si no termina en coma, intentamos formatear bonito, pero cuidado con el cursor saltando
+          // Para simplificar la escritura, dejamos el valor "crudo" mientras se escribe
+          setExtraAmount(clean);
+      }
+  };
 
   if (isEditing) {
     return (
@@ -151,12 +191,10 @@ const FieldAccordion: React.FC<FieldAccordionProps> = ({
                     <input type="text" value={editedField.name} onChange={e => setEditedField({...editedField, name: e.target.value})} className="w-full p-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 dark:text-white"/>
                 </div>
                 
-                {/* --- CAMBIO AQUÍ: Input de Porcentaje corregido --- */}
                 <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Porcentaje %</label>
                     <input 
                         type="number" 
-                        // SI ES 0, MOSTRAMOS VACÍO PARA PODER ESCRIBIR CÓMODAMENTE
                         value={editedField.percentage === 0 ? '' : editedField.percentage} 
                         onChange={e => setEditedField({...editedField, percentage: Number(e.target.value)})} 
                         placeholder="0"
@@ -191,6 +229,7 @@ const FieldAccordion: React.FC<FieldAccordionProps> = ({
             </div>
         </div>
 
+        {/* Categorías */}
         <div className="space-y-4 border-t border-gray-100 dark:border-gray-700 pt-4">
           <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Estructura</label>
           {editedField.categories.map(cat => (
@@ -259,6 +298,7 @@ const FieldAccordion: React.FC<FieldAccordionProps> = ({
                      const displayValue = expenses[sub.id] ? formatNumberDisplay(expenses[sub.id]) : '';
                      const displayValueUsd = expensesUsd[sub.id] ? formatNumberDisplay(expensesUsd[sub.id]) : '';
                      const isInvestment = field.id === 'f_investment';
+
                      return (
                       <div key={sub.id} className="group bg-white dark:bg-dark-card rounded-xl p-3 shadow-sm border border-gray-100 dark:border-gray-800 flex items-center gap-3 transition-shadow hover:shadow-md">
                         <button onClick={() => onTogglePaid(sub.id, !isPaid)} className={`w-8 h-8 rounded-lg flex items-center justify-center border-2 transition-all ${isPaid ? 'bg-green-500 border-green-500 text-white shadow-green-500/30 shadow-lg scale-105' : 'border-gray-300 dark:border-gray-600 text-transparent hover:border-blue-400'}`}><Check size={16} strokeWidth={3} /></button>
@@ -269,21 +309,85 @@ const FieldAccordion: React.FC<FieldAccordionProps> = ({
                           </div>
                           <div className="relative mt-1">
                             <span className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-semibold pl-2">$</span>
-                            <input type="text" value={displayValue} onChange={(e) => handleSubExpenseChange(sub.id, e.target.value)} placeholder="0" className="w-full bg-transparent border-none p-0 pl-6 text-base font-semibold text-gray-900 dark:text-white placeholder-gray-300 focus:ring-0 focus:outline-none"/>
+                            <input 
+                              type="text"
+                              value={displayValue}
+                              onChange={(e) => handleSubExpenseChange(sub.id, e.target.value)}
+                              placeholder="0"
+                              className="w-full bg-transparent border-none p-0 pl-6 text-base font-semibold text-gray-900 dark:text-white placeholder-gray-300 focus:ring-0 focus:outline-none"
+                            />
                           </div>
                         </div>
-                        {isInvestment && ( <div className="w-24 ml-2 pl-3 border-l border-gray-100 dark:border-gray-700"><div className="flex justify-between items-baseline"><label className="text-[10px] font-bold text-green-600 dark:text-green-400 tracking-wide">USD</label></div><div className="relative mt-1"><span className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-semibold">US$</span><input type="text" value={displayValueUsd} onChange={(e) => handleSubExpenseUsdChange(sub.id, e.target.value)} placeholder="0" className="w-full bg-transparent border-none p-0 pl-7 text-sm font-mono font-medium text-gray-700 dark:text-gray-300 placeholder-gray-300 focus:outline-none"/></div></div>)}
+
+                        {/* USD Input for Investment Field */}
+                        {isInvestment && (
+                             <div className="w-24 ml-2 pl-3 border-l border-gray-100 dark:border-gray-700">
+                                 <div className="flex justify-between items-baseline">
+                                    <label className="text-[10px] font-bold text-green-600 dark:text-green-400 tracking-wide">USD</label>
+                                 </div>
+                                 <div className="relative mt-1">
+                                    <span className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-semibold">US$</span>
+                                    <input 
+                                        type="text"
+                                        value={displayValueUsd}
+                                        onChange={(e) => handleSubExpenseUsdChange(sub.id, e.target.value)}
+                                        placeholder="0"
+                                        className="w-full bg-transparent border-none p-0 pl-7 text-sm font-mono font-medium text-gray-700 dark:text-gray-300 placeholder-gray-300 focus:outline-none"
+                                    />
+                                 </div>
+                             </div>
+                        )}
                       </div>
                     )
                   })}
                 </div>
               </div>
             ))}
+
+            {/* Extra Items Section */}
             {field.type !== 'savings' && (
                 <div className="mt-6 pt-4 border-t-2 border-dashed border-gray-200 dark:border-gray-700">
                     <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Extras / Otros</h4>
-                    <div className="space-y-2 mb-3">{(extras[field.id] || []).map((extra) => (<div key={extra.id} className="flex items-center gap-3 bg-white dark:bg-dark-card p-2 rounded-lg border border-gray-100 dark:border-gray-800"><span className="text-gray-600 dark:text-gray-300 text-sm flex-1 font-medium pl-1">{extra.description}</span><span className="font-mono text-gray-800 dark:text-white font-bold text-sm">{formatNumberDisplay(extra.amount)}</span><button onClick={() => onDeleteExtra(field.id, extra.id)} className="text-gray-400 hover:text-red-500 p-1 transition-colors"><X size={16}/></button></div>))}</div>
-                    <div className="flex gap-2 bg-white dark:bg-dark-card p-1.5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm"><input placeholder="Descripción..." value={extraDesc} onChange={e => setExtraDesc(e.target.value)} className="flex-1 bg-transparent px-2 py-1 text-sm dark:text-white focus:outline-none"/><div className="w-px bg-gray-200 dark:bg-gray-700 mx-1"></div><input type="text" placeholder="$ 0" value={extraAmount} onChange={e => handleExtraAmountChange(e.target.value)} className="w-24 bg-transparent px-2 py-1 text-sm dark:text-white font-mono focus:outline-none text-right"/><button onClick={() => { const parsedAmount = parseNumberInput(extraAmount); if(extraDesc && parsedAmount > 0) { onAddExtra(field.id, extraDesc, parsedAmount); setExtraDesc(''); setExtraAmount(''); }}} className="bg-blue-600 text-white rounded-lg px-3 hover:bg-blue-700 transition-colors"><Plus size={18} /></button></div>
+                    
+                    <div className="space-y-2 mb-3">
+                        {(extras[field.id] || []).map((extra) => (
+                            <div key={extra.id} className="flex items-center gap-3 bg-white dark:bg-dark-card p-2 rounded-lg border border-gray-100 dark:border-gray-800">
+                                <span className="text-gray-600 dark:text-gray-300 text-sm flex-1 font-medium pl-1">{extra.description}</span>
+                                <span className="font-mono text-gray-800 dark:text-white font-bold text-sm">{formatNumberDisplay(extra.amount)}</span>
+                                <button onClick={() => onDeleteExtra(field.id, extra.id)} className="text-gray-400 hover:text-red-500 p-1 transition-colors"><X size={16}/></button>
+                            </div>
+                        ))}
+                    </div>
+                    
+                    <div className="flex gap-2 bg-white dark:bg-dark-card p-1.5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                        <input 
+                            placeholder="Descripción..."
+                            value={extraDesc}
+                            onChange={e => setExtraDesc(e.target.value)}
+                            className="flex-1 bg-transparent px-2 py-1 text-sm dark:text-white focus:outline-none"
+                        />
+                        <div className="w-px bg-gray-200 dark:bg-gray-700 mx-1"></div>
+                        <input 
+                            type="text"
+                            placeholder="$ 0"
+                            value={extraAmount}
+                            onChange={e => handleExtraAmountChange(e.target.value)}
+                            className="w-24 bg-transparent px-2 py-1 text-sm dark:text-white font-mono focus:outline-none text-right"
+                        />
+                        <button 
+                            onClick={() => {
+                                const parsedAmount = parseNumberInput(extraAmount);
+                                if(extraDesc && parsedAmount > 0) {
+                                    onAddExtra(field.id, extraDesc, parsedAmount);
+                                    setExtraDesc('');
+                                    setExtraAmount('');
+                                }
+                            }}
+                            className="bg-blue-600 text-white rounded-lg px-3 hover:bg-blue-700 transition-colors"
+                        >
+                            <Plus size={18} />
+                        </button>
+                    </div>
                 </div>
             )}
          </div>

@@ -23,17 +23,47 @@ const DEFAULT_APP_DATA: AppData = {
   months: {}
 };
 
-// --- HELPER FUNCTIONS ---
+// --- HELPER FUNCTIONS MEJORADAS (Soporte Decimales) ---
 const formatNumberDisplay = (val: string | number): string => {
   if (val === '' || val === undefined || val === null) return '';
-  const stringVal = val.toString().replace(/\./g, '');
-  if (isNaN(Number(stringVal))) return val.toString();
-  return Number(stringVal).toLocaleString('es-AR');
+
+  // Si es número (viene de DB), formatear bonito
+  if (typeof val === 'number') {
+    return val.toLocaleString('es-AR', { maximumFractionDigits: 2 });
+  }
+
+  // Si es string (estamos escribiendo)
+  // 1. Permitir solo números y coma
+  let clean = val.replace(/[^0-9,]/g, '');
+  
+  // 2. Manejar decimales
+  const parts = clean.split(',');
+  const integerPart = parts[0].replace(/\./g, ''); // Limpiar puntos viejos
+  
+  // 3. Agregar puntos de mil
+  const formattedInt = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+  // 4. Retornar (Si hay coma, la agregamos al final)
+  if (parts.length > 1) {
+     return `${formattedInt},${parts[1].slice(0, 2)}`; // Max 2 decimales
+  }
+  
+  // Truco: Si el usuario escribió la coma al final, la mantenemos para que pueda seguir escribiendo decimales
+  if (val.endsWith(',')) {
+      return `${formattedInt},`;
+  }
+
+  return formattedInt;
 };
 
 const parseNumberInput = (val: string): number => {
-  const clean = val.replace(/\./g, '');
-  return clean === '' ? 0 : parseFloat(clean);
+  // 1. Quitar puntos de miles
+  const noDots = val.replace(/\./g, '');
+  // 2. Cambiar coma por punto (para que JS entienda)
+  const withDot = noDots.replace(',', '.');
+  // 3. Parsear
+  const num = parseFloat(withDot);
+  return isNaN(num) ? 0 : num;
 };
 
 const getMonthDataSafe = (appData: AppData, year: number, month: number): MonthlyData => {
@@ -84,16 +114,10 @@ const HomePage = ({ user, appData, onSave }: { user: FirebaseUser | null, appDat
   const displayName = user?.displayName || (user?.isAnonymous ? 'Invitado' : 'Usuario');
   const photoURL = user?.photoURL;
 
-  // CAMBIO AQUÍ: Ya no buscamos "last_known_salary"
   useEffect(() => {
     const monthData = getMonthDataSafe(appData, year, month + 1);
-    
-    if (monthData.salary > 0) {
-      setSalary(formatNumberDisplay(monthData.salary));
-    } else {
-      // Si no hay datos para este mes, lo dejamos en blanco
-      setSalary('');
-    }
+    if (monthData.salary > 0) setSalary(formatNumberDisplay(monthData.salary));
+    else setSalary('');
   }, [year, month, appData]);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -108,13 +132,14 @@ const HomePage = ({ user, appData, onSave }: { user: FirebaseUser | null, appDat
       const newData = { ...appData, months: { ...appData.months, [key]: { ...currentMonth, salary: salaryNum } } };
       
       onSave(newData);
-      // Ya no guardamos last_known_salary
+      localStorage.setItem('last_known_salary', salaryNum.toString());
       navigate(`/budget?year=${year}&month=${month + 1}`);
     }
   };
 
   const handleSalaryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/[^0-9]/g, '');
+    // CAMBIO AQUÍ: Permitimos todo lo que escriba el usuario, el formateador se encarga
+    const raw = e.target.value; 
     setSalary(formatNumberDisplay(raw));
   };
 
@@ -160,7 +185,6 @@ const BudgetPage = ({ appData, onSave }: { appData: AppData, onSave: (data: AppD
   const [newFieldId, setNewFieldId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Scroll
   useEffect(() => {
     if (newFieldId && bottomRef.current) {
       setTimeout(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, 150);
@@ -310,17 +334,11 @@ const App: React.FC = () => {
   const [authLoading, setAuthLoading] = useState(true);
   const [appData, setAppData] = useState<AppData>(DEFAULT_APP_DATA);
   const [dataInitialized, setDataInitialized] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [lluvias, setLluvias] = useState<number[]>([]);
 
-  // 1. Auth Listener
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setAuthLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // 2. Data Fetcher
+  useEffect(() => { const unsubscribe = onAuthStateChanged(auth, (u) => { setUser(u); setAuthLoading(false); }); return () => unsubscribe(); }, []);
+  
   useEffect(() => {
     if (user) {
       setDataInitialized(false);
@@ -334,18 +352,11 @@ const App: React.FC = () => {
 
   const handleSaveData = async (newData: AppData) => { setAppData(newData); if (user) { await saveAppData(user.uid, newData); } };
   const handleToggleTheme = async () => { const newTheme = appData.theme === 'light' ? 'dark' : 'light'; const newData = { ...appData, theme: newTheme }; handleSaveData(newData); };
-
-  // --- ESTILOS LLUVIA ---
-  const [mounted, setMounted] = useState(false);
-  const [lluvias, setLluvias] = useState<number[]>([]);
-  useEffect(() => { setMounted(true); }, []);
+  
+  useEffect(() => { setMounted(true); if (!document.getElementById('money-rain-style')) { const style = document.createElement('style'); style.id = 'money-rain-style'; style.innerHTML = `@keyframes money-rain { 0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; } 100% { transform: translateY(110vh) rotate(360deg); opacity: 0; } } .animate-money-rain { animation: money-rain linear forwards; pointer-events: none; }`; document.head.appendChild(style); } }, []);
   const triggerRain = () => { const id = Date.now(); setLluvias(prev => [...prev, id]); setTimeout(() => setLluvias(prev => prev.filter(x => x !== id)), 5000); };
-  useEffect(() => { if (!document.getElementById('money-rain-style')) { const style = document.createElement('style'); style.id = 'money-rain-style'; style.innerHTML = `@keyframes money-rain { 0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; } 100% { transform: translateY(110vh) rotate(360deg); opacity: 0; } } .animate-money-rain { animation: money-rain linear forwards; pointer-events: none; }`; document.head.appendChild(style); } }, []);
 
-  if (authLoading || (user && !dataInitialized)) {
-    return (<div className="min-h-screen flex items-center justify-center bg-gray-900 text-white flex-col gap-4"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div><span className="text-gray-400 text-sm">Cargando tus finanzas...</span></div>);
-  }
-
+  if (authLoading || (user && !dataInitialized)) return (<div className="min-h-screen flex items-center justify-center bg-gray-900 text-white flex-col gap-4"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div><span className="text-gray-400 text-sm">Cargando tus finanzas...</span></div>);
   if (!user) return <LoginPage onLogin={() => {}} />;
 
   return (
