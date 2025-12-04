@@ -6,31 +6,15 @@ import FieldAccordion from './components/FieldAccordion';
 import MoneyRain from './components/MoneyRain';
 import BudgetCharts from './components/BudgetCharts';
 import RecurringModal from './components/RecurringModal';
-// ----------------------------------------------------------------------
-// IMPORTANTE: Solo importamos lo que REALMENTE existe en storageService.ts
-// ----------------------------------------------------------------------
-import { fetchAppData, saveAppData, toggleThemeInDb } from './services/storageService';
 import { YEARS, MONTHS, INITIAL_FIELDS } from './constants';
+import { fetchAppData, saveAppData, toggleThemeInDb } from './services/storageService';
 import { Field, AppData, MonthlyData } from './types';
 import { ArrowLeft, Plus, DollarSign, AlertTriangle, PieChart as PieIcon, BarChart as BarIcon, Eye, EyeOff, LogOut, User, UserCircle } from 'lucide-react';
 
 // --- FIREBASE IMPORTS ---
-import { initializeApp } from "firebase/app";
-import { getAuth, signInWithPopup, signInAnonymously, GoogleAuthProvider, signOut, onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
+import { auth } from './firebase'; 
+import { signInWithPopup, signInAnonymously, GoogleAuthProvider, signOut, onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 
-// --- FIREBASE CONFIGURATION ---
-const firebaseConfig = {
-  apiKey: "AIzaSyCGEW8VYiKC7yPy50O75WU31feOBSWjeW0",
-  authDomain: "finanzas-personales.vercel.app", 
-  projectId: "mis-finanzas-f8215",
-  storageBucket: "mis-finanzas-f8215.firebasestorage.app",
-  messagingSenderId: "773839724132",
-  appId: "1:773839724132:web:f4b3e7d81e10f51554c971",
-  measurementId: "G-VVBP8RGCED"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
 const DEFAULT_APP_DATA: AppData = {
@@ -52,7 +36,6 @@ const parseNumberInput = (val: string): number => {
   return clean === '' ? 0 : parseFloat(clean);
 };
 
-// Helper local seguro (NO IMPORTADO)
 const getMonthDataSafe = (appData: AppData, year: number, month: number): MonthlyData => {
     const key = `${year}-${String(month).padStart(2, '0')}`;
     return appData.months[key] || { salary: 0, expenses: {}, expensesUsd: {}, paidStatus: {}, extras: {} };
@@ -64,49 +47,27 @@ const LoginPage = ({ onLogin }: { onLogin: () => void }) => {
   const [loading, setLoading] = useState(false);
 
   const handleGoogleLogin = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (err: any) {
-      console.error(err);
-      setError('Error al iniciar con Google.');
-      setLoading(false);
-    }
+    setLoading(true); setError('');
+    try { await signInWithPopup(auth, googleProvider); } 
+    catch (err: any) { console.error(err); setError('Error al iniciar con Google.'); setLoading(false); }
   };
 
   const handleGuestLogin = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      await signInAnonymously(auth);
-    } catch (err: any) {
-      console.error(err);
-      setError('Error al iniciar como invitado.');
-      setLoading(false);
-    }
+    setLoading(true); setError('');
+    try { await signInAnonymously(auth); } 
+    catch (err: any) { console.error(err); setError('Error al iniciar como invitado.'); setLoading(false); }
   };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 p-4 transition-colors">
       <div className="w-full max-w-md bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 text-center">
-        <div className="mb-6 flex justify-center">
-          <div className="bg-blue-100 dark:bg-blue-900 p-4 rounded-full">
-            <DollarSign size={48} className="text-blue-600 dark:text-blue-400" />
-          </div>
-        </div>
+        <div className="mb-6 flex justify-center"><div className="bg-blue-100 dark:bg-blue-900 p-4 rounded-full"><DollarSign size={48} className="text-blue-600 dark:text-blue-400" /></div></div>
         <h1 className="text-3xl font-bold mb-2 text-gray-800 dark:text-white">Mis Finanzas</h1>
         <p className="text-gray-500 dark:text-gray-400 mb-8">Gestiona tu presupuesto inteligentemente</p>
-        
         {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm">{error}</div>}
-
         <div className="space-y-3">
-            <button onClick={handleGoogleLogin} disabled={loading} className="w-full py-3 px-4 bg-white hover:bg-gray-50 text-gray-700 font-semibold rounded-xl border border-gray-300 shadow-sm flex items-center justify-center gap-3 transition-all hover:shadow-md disabled:opacity-50">
-            {loading ? <span>Cargando...</span> : <><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="google" /><span>Ingresar con Google</span></>}
-            </button>
-            <button onClick={handleGuestLogin} disabled={loading} className="w-full py-3 px-4 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-200 font-semibold rounded-xl flex items-center justify-center gap-3 transition-all disabled:opacity-50">
-                <UserCircle size={20} /><span>Continuar como Invitado</span>
-            </button>
+            <button onClick={handleGoogleLogin} disabled={loading} className="w-full py-3 px-4 bg-white hover:bg-gray-50 text-gray-700 font-semibold rounded-xl border border-gray-300 shadow-sm flex items-center justify-center gap-3 transition-all hover:shadow-md disabled:opacity-50">{loading ? <span>Cargando...</span> : <><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5 mr-2" alt="google" /><span>Ingresar con Google</span></>}</button>
+            <button onClick={handleGuestLogin} disabled={loading} className="w-full py-3 px-4 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-200 font-semibold rounded-xl flex items-center justify-center gap-3 transition-all disabled:opacity-50"><UserCircle size={20} /><span>Continuar como Invitado</span></button>
         </div>
       </div>
     </div>
@@ -116,30 +77,22 @@ const LoginPage = ({ onLogin }: { onLogin: () => void }) => {
 // --- HOME PAGE ---
 const HomePage = ({ user, appData, onSave }: { user: FirebaseUser | null, appData: AppData, onSave: (data: AppData) => void }) => {
   const navigate = useNavigate();
-  
-  const [year, setYear] = useState(() => {
-    const saved = localStorage.getItem('last_view_year');
-    return saved ? parseInt(saved) : new Date().getFullYear();
-  });
-
-  const [month, setMonth] = useState(() => {
-    const saved = localStorage.getItem('last_view_month');
-    return saved ? parseInt(saved) : new Date().getMonth();
-  });
-
+  const [year, setYear] = useState(() => { const s = localStorage.getItem('last_view_year'); return s ? parseInt(s) : new Date().getFullYear(); });
+  const [month, setMonth] = useState(() => { const s = localStorage.getItem('last_view_month'); return s ? parseInt(s) : new Date().getMonth(); });
   const [salary, setSalary] = useState('');
+  
   const displayName = user?.displayName || (user?.isAnonymous ? 'Invitado' : 'Usuario');
   const photoURL = user?.photoURL;
 
+  // CAMBIO AQUÍ: Ya no buscamos "last_known_salary"
   useEffect(() => {
     const monthData = getMonthDataSafe(appData, year, month + 1);
     
     if (monthData.salary > 0) {
       setSalary(formatNumberDisplay(monthData.salary));
     } else {
-      const lastSalary = localStorage.getItem('last_known_salary');
-      if (lastSalary) setSalary(formatNumberDisplay(parseInt(lastSalary)));
-      else setSalary('');
+      // Si no hay datos para este mes, lo dejamos en blanco
+      setSalary('');
     }
   }, [year, month, appData]);
 
@@ -147,23 +100,15 @@ const HomePage = ({ user, appData, onSave }: { user: FirebaseUser | null, appDat
     e.preventDefault();
     localStorage.setItem('last_view_year', year.toString());
     localStorage.setItem('last_view_month', month.toString());
-
+    
     const salaryNum = parseNumberInput(salary);
     if (salaryNum > 0) {
       const key = `${year}-${String(month + 1).padStart(2, '0')}`;
       const currentMonth = appData.months[key] || { salary: 0, expenses: {}, expensesUsd: {}, paidStatus: {}, extras: {} };
+      const newData = { ...appData, months: { ...appData.months, [key]: { ...currentMonth, salary: salaryNum } } };
       
-      const newData = {
-          ...appData,
-          months: {
-              ...appData.months,
-              [key]: { ...currentMonth, salary: salaryNum }
-          }
-      };
-
       onSave(newData);
-      localStorage.setItem('last_known_salary', salaryNum.toString());
-      
+      // Ya no guardamos last_known_salary
       navigate(`/budget?year=${year}&month=${month + 1}`);
     }
   };
@@ -215,6 +160,7 @@ const BudgetPage = ({ appData, onSave }: { appData: AppData, onSave: (data: AppD
   const [newFieldId, setNewFieldId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // Scroll
   useEffect(() => {
     if (newFieldId && bottomRef.current) {
       setTimeout(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, 150);
@@ -243,13 +189,7 @@ const BudgetPage = ({ appData, onSave }: { appData: AppData, onSave: (data: AppD
   }, [monthKey]); 
 
   const updateMonth = (updates: Partial<MonthlyData>) => {
-      const newData = { 
-          ...appData, 
-          months: { 
-              ...appData.months, 
-              [monthKey]: { ...monthData, ...updates } 
-          } 
-      };
+      const newData = { ...appData, months: { ...appData.months, [monthKey]: { ...monthData, ...updates } } };
       onSave(newData);
   };
 
@@ -385,57 +325,25 @@ const App: React.FC = () => {
     if (user) {
       setDataInitialized(false);
       fetchAppData(user.uid).then((data) => {
-        if (data.fields && data.fields.length > 0) {
-           setAppData(data);
-        } else {
-           setAppData(prev => ({ ...prev, ...data, fields: INITIAL_FIELDS }));
-        }
+        if (data.fields && data.fields.length > 0) { setAppData(data); } 
+        else { setAppData(prev => ({ ...prev, ...data, fields: INITIAL_FIELDS })); }
         setDataInitialized(true);
       });
     }
   }, [user]);
 
-  // 3. Universal Save Handler
-  const handleSaveData = async (newData: AppData) => {
-      setAppData(newData); 
-      if (user) {
-          await saveAppData(user.uid, newData); 
-      }
-  };
-
-  const handleToggleTheme = async () => {
-      const newTheme = appData.theme === 'light' ? 'dark' : 'light';
-      const newData = { ...appData, theme: newTheme };
-      handleSaveData(newData); 
-  };
+  const handleSaveData = async (newData: AppData) => { setAppData(newData); if (user) { await saveAppData(user.uid, newData); } };
+  const handleToggleTheme = async () => { const newTheme = appData.theme === 'light' ? 'dark' : 'light'; const newData = { ...appData, theme: newTheme }; handleSaveData(newData); };
 
   // --- ESTILOS LLUVIA ---
   const [mounted, setMounted] = useState(false);
   const [lluvias, setLluvias] = useState<number[]>([]);
   useEffect(() => { setMounted(true); }, []);
-
-  const triggerRain = () => {
-    const id = Date.now();
-    setLluvias(prev => [...prev, id]);
-    setTimeout(() => setLluvias(prev => prev.filter(x => x !== id)), 5000);
-  };
-  
-  useEffect(() => {
-    if (!document.getElementById('money-rain-style')) {
-        const style = document.createElement('style');
-        style.id = 'money-rain-style';
-        style.innerHTML = `@keyframes money-rain { 0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; } 100% { transform: translateY(110vh) rotate(360deg); opacity: 0; } } .animate-money-rain { animation: money-rain linear forwards; pointer-events: none; }`;
-        document.head.appendChild(style);
-    }
-  }, []);
+  const triggerRain = () => { const id = Date.now(); setLluvias(prev => [...prev, id]); setTimeout(() => setLluvias(prev => prev.filter(x => x !== id)), 5000); };
+  useEffect(() => { if (!document.getElementById('money-rain-style')) { const style = document.createElement('style'); style.id = 'money-rain-style'; style.innerHTML = `@keyframes money-rain { 0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; } 100% { transform: translateY(110vh) rotate(360deg); opacity: 0; } } .animate-money-rain { animation: money-rain linear forwards; pointer-events: none; }`; document.head.appendChild(style); } }, []);
 
   if (authLoading || (user && !dataInitialized)) {
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white flex-col gap-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-            <span className="text-gray-400 text-sm">Cargando tus finanzas...</span>
-        </div>
-    );
+    return (<div className="min-h-screen flex items-center justify-center bg-gray-900 text-white flex-col gap-4"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div><span className="text-gray-400 text-sm">Cargando tus finanzas...</span></div>);
   }
 
   if (!user) return <LoginPage onLogin={() => {}} />;
@@ -443,15 +351,7 @@ const App: React.FC = () => {
   return (
     <>
         {mounted && createPortal(<>{lluvias.map(id => (<div key={id} className="fixed inset-0 pointer-events-none z-[99999] overflow-hidden">{Array.from({ length: 60 }).map((_, i) => (<div key={i} className="absolute text-4xl animate-money-rain" style={{ top: `-${Math.random() * 20}vh`, left: `${Math.random() * 100}vw`, animationDelay: `${Math.random() * 2}s`, animationDuration: `${2 + Math.random() * 3}s`, opacity: 0.8 + Math.random() * 0.2 }}>💵</div>))}</div>))}</>, document.body)}
-        
-        <HashRouter>
-            <Layout theme={appData.theme} toggleTheme={handleToggleTheme} onMoneyClick={triggerRain}>
-                <Routes>
-                    <Route path="/" element={<HomePage user={user} appData={appData} onSave={handleSaveData} />} />
-                    <Route path="/budget" element={<BudgetPage appData={appData} onSave={handleSaveData} />} />
-                </Routes>
-            </Layout>
-        </HashRouter>
+        <HashRouter><Layout theme={appData.theme} toggleTheme={handleToggleTheme} onMoneyClick={triggerRain}><Routes><Route path="/" element={<HomePage user={user} appData={appData} onSave={handleSaveData} />} /><Route path="/budget" element={<BudgetPage appData={appData} onSave={handleSaveData} />} /></Routes></Layout></HashRouter>
     </>
   );
 };
