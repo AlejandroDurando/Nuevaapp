@@ -6,10 +6,11 @@ import FieldAccordion from './components/FieldAccordion';
 import MoneyRain from './components/MoneyRain';
 import BudgetCharts from './components/BudgetCharts';
 import RecurringModal from './components/RecurringModal';
+import PinLock from './components/PinLock';
 import { YEARS, MONTHS, INITIAL_FIELDS } from './constants';
 import { fetchAppData, saveAppData, toggleThemeInDb } from './services/storageService';
 import { Field, AppData, MonthlyData } from './types';
-import { ArrowLeft, Plus, DollarSign, AlertTriangle, PieChart as PieIcon, BarChart as BarIcon, Eye, EyeOff, LogOut, User, UserCircle } from 'lucide-react';
+import { ArrowLeft, Plus, DollarSign, AlertTriangle, PieChart as PieIcon, BarChart as BarIcon, Eye, EyeOff, LogOut, User, UserCircle, Users, Lock, Unlock, X, CheckCircle } from 'lucide-react';
 
 // --- FIREBASE IMPORTS ---
 import { auth } from './firebase'; 
@@ -66,12 +67,51 @@ const LoginPage = ({ onLogin }: { onLogin: () => void }) => {
         <p className="text-gray-500 dark:text-gray-400 mb-8">Gestiona tu presupuesto inteligentemente</p>
         {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm">{error}</div>}
         <div className="space-y-3">
-            <button onClick={handleGoogleLogin} disabled={loading} className="w-full py-3 px-4 bg-white hover:bg-gray-50 text-gray-700 font-semibold rounded-xl border border-gray-300 shadow-sm flex items-center justify-center gap-3 transition-all hover:shadow-md disabled:opacity-50">
-            {loading ? <span>Cargando...</span> : <><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="google" /><span>Ingresar con Google</span></>}
-            </button>
-            <button onClick={handleGuestLogin} disabled={loading} className="w-full py-3 px-4 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-200 font-semibold rounded-xl flex items-center justify-center gap-3 transition-all disabled:opacity-50">
-                <UserCircle size={20} /><span>Continuar como Invitado</span>
-            </button>
+            <button onClick={handleGoogleLogin} disabled={loading} className="w-full py-3 px-4 bg-white hover:bg-gray-50 text-gray-700 font-semibold rounded-xl border border-gray-300 shadow-sm flex items-center justify-center gap-3 transition-all hover:shadow-md disabled:opacity-50">{loading ? <span>Cargando...</span> : <><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5 mr-2" alt="google" /><span>Ingresar con Google</span></>}</button>
+            <button onClick={handleGuestLogin} disabled={loading} className="w-full py-3 px-4 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-200 font-semibold rounded-xl flex items-center justify-center gap-3 transition-all disabled:opacity-50"><UserCircle size={20} /><span>Continuar como Invitado</span></button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- MODAL DE GRUPO ---
+const GroupModal = ({ currentGroupId, onJoin, onLeave, onClose }: { currentGroupId: string | null, onJoin: (id: string) => void, onLeave: () => void, onClose: () => void }) => {
+  const [groupName, setGroupName] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanName = groupName.trim().toLowerCase().replace(/\s+/g, '_');
+    if (cleanName.length > 2) onJoin(cleanName);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-dark-card w-full max-w-md rounded-2xl shadow-2xl border dark:border-gray-700 flex flex-col animate-in zoom-in-95 duration-200">
+        <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+          <h3 className="text-xl font-bold dark:text-white flex items-center gap-2"><Users className="text-purple-500" /> {currentGroupId ? 'Tu Grupo' : 'Unirse a Grupo'}</h3>
+          <button onClick={onClose}><X className="text-gray-400 hover:text-red-500" /></button>
+        </div>
+        <div className="p-6">
+          {currentGroupId ? (
+            <div className="text-center">
+              <div className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 p-4 rounded-xl mb-4 flex flex-col items-center">
+                <CheckCircle size={32} className="mb-2" />
+                <span className="text-sm font-bold uppercase tracking-wider">Estás conectado a:</span>
+                <span className="text-2xl font-black mt-1">{currentGroupId}</span>
+              </div>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Cualquier persona con este nombre puede ver y editar estos datos.</p>
+              <button onClick={onLeave} className="w-full py-3 border-2 border-red-500 text-red-500 font-bold rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">Salir del Grupo (Volver a Personal)</button>
+            </div>
+          ) : (
+            <div>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Ingresa un nombre único (ej: <b>pareja_2025</b>) para compartir gastos.</p>
+              <form onSubmit={handleSubmit}>
+                <input autoFocus type="text" placeholder="Nombre del grupo..." value={groupName} onChange={e => setGroupName(e.target.value)} className="w-full p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl text-lg font-bold mb-4 focus:ring-2 focus:ring-purple-500 outline-none dark:text-white"/>
+                <button type="submit" disabled={groupName.length < 3} className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow-lg disabled:opacity-50">Entrar al Grupo</button>
+              </form>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -79,13 +119,15 @@ const LoginPage = ({ onLogin }: { onLogin: () => void }) => {
 };
 
 // --- HOME PAGE ---
-const HomePage = ({ user, appData, onSave }: { user: FirebaseUser | null, appData: AppData, onSave: (data: AppData) => void }) => {
+const HomePage = ({ user, appData, onSave, groupId, onOpenGroupModal, onSetupPin }: { user: FirebaseUser | null, appData: AppData, onSave: (data: AppData) => void, groupId: string | null, onOpenGroupModal: () => void, onSetupPin: () => void }) => {
   const navigate = useNavigate();
   const [year, setYear] = useState(() => { const s = localStorage.getItem('last_view_year'); return s ? parseInt(s) : new Date().getFullYear(); });
   const [month, setMonth] = useState(() => { const s = localStorage.getItem('last_view_month'); return s ? parseInt(s) : new Date().getMonth(); });
   const [salary, setSalary] = useState('');
+  
   const displayName = user?.displayName || (user?.isAnonymous ? 'Invitado' : 'Usuario');
   const photoURL = user?.photoURL;
+  const hasPin = !!localStorage.getItem('app_pin');
 
   useEffect(() => {
     const monthData = getMonthDataSafe(appData, year, month + 1);
@@ -108,7 +150,7 @@ const HomePage = ({ user, appData, onSave }: { user: FirebaseUser | null, appDat
   };
 
   const handleSalaryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value; 
+    const raw = e.target.value.replace(/[^0-9]/g, '');
     setSalary(formatNumberDisplay(raw));
   };
 
@@ -120,8 +162,15 @@ const HomePage = ({ user, appData, onSave }: { user: FirebaseUser | null, appDat
                 {photoURL ? <img src={photoURL} className="w-10 h-10 rounded-full border-2 border-blue-500" alt="profile" /> : <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center border-2 border-gray-300 dark:border-gray-600"><User size={20} className="text-gray-500 dark:text-gray-300" /></div>}
                 <div className="text-left"><p className="text-xs text-gray-500 dark:text-gray-400">Hola,</p><p className="text-sm font-bold text-gray-800 dark:text-white truncate max-w-[150px]">{displayName}</p></div>
             </div>
-            <button onClick={() => signOut(auth)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"><LogOut size={20} /></button>
+            <div className="flex gap-2">
+                <button onClick={onSetupPin} className={`p-2 rounded-lg transition-colors ${hasPin ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`} title={hasPin ? "PIN Activado" : "Configurar PIN"}>{hasPin ? <Lock size={20} /> : <Unlock size={20} />}</button>
+                <button onClick={onOpenGroupModal} className={`p-2 rounded-lg transition-colors ${groupId ? 'bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-300' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`} title={groupId ? `Grupo: ${groupId}` : "Crear/Unirse a Grupo"}><Users size={20} /></button>
+                <button onClick={() => signOut(auth)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="Cerrar Sesión"><LogOut size={20} /></button>
+            </div>
         </div>
+        
+        {groupId && <div className="mb-4 p-2 bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-900 rounded-lg flex items-center justify-center gap-2 text-xs font-bold text-purple-600 dark:text-purple-300"><Users size={14} /> Modo Grupo: {groupId}</div>}
+
         <div className="text-center mb-8"><h2 className="text-2xl font-bold mb-2 text-gray-800 dark:text-white">Configurar Mes</h2><p className="text-gray-500 dark:text-gray-400">Selecciona fecha y sueldo</p></div>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-2 gap-4">
@@ -137,7 +186,7 @@ const HomePage = ({ user, appData, onSave }: { user: FirebaseUser | null, appDat
 };
 
 // --- BUDGET PAGE ---
-const BudgetPage = ({ appData, onSave }: { appData: AppData, onSave: (data: AppData) => void }) => {
+const BudgetPage = ({ appData, onSave, groupId }: { appData: AppData, onSave: (data: AppData) => void, groupId: string | null }) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const year = Number(searchParams.get('year'));
@@ -152,7 +201,6 @@ const BudgetPage = ({ appData, onSave }: { appData: AppData, onSave: (data: AppD
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { if (newFieldId && bottomRef.current) { setTimeout(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, 150); } }, [newFieldId, appData.fields.length]);
-
   useEffect(() => {
     if (!monthData.recurringApplied && appData.fields.length > 0) {
       const foundRecurring: any[] = [];
@@ -160,7 +208,7 @@ const BudgetPage = ({ appData, onSave }: { appData: AppData, onSave: (data: AppD
       if (foundRecurring.length > 0) { setRecurringItems(foundRecurring); setShowRecurringModal(true); } 
       else { const newData = { ...appData, months: { ...appData.months, [monthKey]: { ...monthData, recurringApplied: true } } }; onSave(newData); }
     }
-  }, [monthKey]);
+  }, [monthKey]); 
 
   const updateMonth = (updates: Partial<MonthlyData>) => { const newData = { ...appData, months: { ...appData.months, [monthKey]: { ...monthData, ...updates } } }; onSave(newData); };
   const handleUpdateExpense = (subId: string, val: number) => { updateMonth({ expenses: { ...monthData.expenses, [subId]: val } }); };
@@ -170,27 +218,11 @@ const BudgetPage = ({ appData, onSave }: { appData: AppData, onSave: (data: AppD
   const handleDeleteExtra = (fid: string, eid: string) => { updateMonth({ extras: { ...monthData.extras, [fid]: (monthData.extras[fid] || []).filter(e => e.id !== eid) } }); };
   const handleSaveField = (uF: Field) => { const newFields = appData.fields.map(f => f.id === uF.id ? uF : f); const newData = { ...appData, fields: newFields }; onSave(newData); setNewFieldId(null); };
   const handleDeleteField = (fid: string) => { if (window.confirm("¿Seguro?")) { const newFields = appData.fields.filter(f => f.id !== fid); const newData = { ...appData, fields: newFields }; onSave(newData); } };
-  
-  // NUEVA FUNCIÓN: MOVER CAMPO
-  const handleMoveField = (fieldId: string, direction: 'up' | 'down') => {
-      const index = appData.fields.findIndex(f => f.id === fieldId);
-      if (index < 0) return;
-      const newFields = [...appData.fields];
-      if (direction === 'up' && index > 0) {
-          [newFields[index], newFields[index - 1]] = [newFields[index - 1], newFields[index]];
-      } else if (direction === 'down' && index < newFields.length - 1) {
-          [newFields[index], newFields[index + 1]] = [newFields[index + 1], newFields[index]];
-      }
-      onSave({ ...appData, fields: newFields });
-  };
-
   const handleAddNewField = () => { const newId = `f_${Date.now()}`; const newField: Field = { id: newId, name: 'Nuevo Campo', percentage: 0, color: 'gray', icon: 'DollarSign', categories: [{ id: `c_${Date.now()}`, name: 'General', subcategories: [] }], type: 'standard', alertThreshold: 80 }; const newData = { ...appData, fields: [...appData.fields, newField] }; onSave(newData); setNewFieldId(newId); };
-
   const totalExpenses = (Object.values(monthData.expenses) as number[]).reduce((a, b) => a + b, 0) + (Object.values(monthData.extras) as { amount: number }[][]).reduce((acc, items) => acc + items.reduce((s, i) => s + i.amount, 0), 0);
   const available = monthData.salary - totalExpenses;
   const totalAllocatedPercentage = appData.fields.reduce((acc, field) => acc + field.percentage, 0);
   const alerts = appData.fields.map(field => { if (field.type === 'savings') return null; const budget = (monthData.salary * field.percentage) / 100; const subTotal = Object.keys(monthData.expenses).reduce((acc, key) => { const isFor = field.categories.some(c => c.subcategories.some(s => s.id === key)); return isFor ? acc + (monthData.expenses[key] || 0) : acc; }, 0); const extraTotal = (monthData.extras[field.id] || []).reduce((acc, item) => acc + item.amount, 0); const totalSpent = subTotal + extraTotal; const pct = budget > 0 ? (totalSpent / budget) * 100 : 0; if (pct >= (field.alertThreshold || 80)) return { fieldName: field.name, pct, isOver: pct >= 100 }; return null; }).filter(Boolean);
-
   if (activeChart !== 'none') return <BudgetCharts fields={appData.fields} salary={monthData.salary} expenses={monthData.expenses} extras={monthData.extras} theme={appData.theme} viewMode={activeChart} onBack={() => setActiveChart('none')} />;
 
   return (
@@ -207,19 +239,7 @@ const BudgetPage = ({ appData, onSave }: { appData: AppData, onSave: (data: AppD
       {alerts.length > 0 && <div className="mb-6 space-y-2">{alerts.map((alert, idx) => <div key={idx} className={`p-3 rounded-lg flex items-center gap-2 text-sm font-bold ${alert?.isOver ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-yellow-100 text-yellow-700 border border-yellow-300'}`}><AlertTriangle size={18} /><span>{alert?.fieldName}: {alert?.isOver ? '¡Presupuesto Excedido!' : `Alcanzó el ${alert?.pct.toFixed(0)}%`}</span></div>)}</div>}
       <div className="grid grid-cols-2 gap-4 mb-6"><button onClick={() => setActiveChart('pie')} className="bg-white dark:bg-dark-card p-4 rounded-xl shadow hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border dark:border-gray-700 flex flex-col items-center justify-center gap-2 text-gray-700 dark:text-gray-300"><PieIcon size={32} className="text-blue-500"/><span className="font-bold text-sm">Distribución de Gastos</span></button><button onClick={() => setActiveChart('bar')} className="bg-white dark:bg-dark-card p-4 rounded-xl shadow hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border dark:border-gray-700 flex flex-col items-center justify-center gap-2 text-gray-700 dark:text-gray-300"><BarIcon size={32} className="text-purple-500"/><span className="font-bold text-sm">Presupuesto vs Realidad</span></button></div>
       <div className="flex flex-col gap-6 pb-24">
-          {appData.fields.map((field, idx) => (
-              <FieldAccordion 
-                key={field.id} field={field} salary={monthData.salary} expenses={monthData.expenses} expensesUsd={monthData.expensesUsd || {}} paidStatus={monthData.paidStatus} extras={monthData.extras} 
-                defaultEditing={field.id === newFieldId}
-                totalAllocatedPercentage={totalAllocatedPercentage}
-                onUpdateExpense={handleUpdateExpense} onUpdateExpenseUsd={handleUpdateExpenseUsd} onTogglePaid={handleTogglePaid} onAddExtra={handleAddExtra} onDeleteExtra={handleDeleteExtra} onSaveField={handleSaveField} onDeleteField={handleDeleteField}
-                // PASAR FUNCIONES DE MOVER
-                onMoveUp={() => handleMoveField(field.id, 'up')}
-                onMoveDown={() => handleMoveField(field.id, 'down')}
-                isFirst={idx === 0}
-                isLast={idx === appData.fields.length - 1}
-              />
-          ))}
+          {appData.fields.map(field => (<FieldAccordion key={field.id} field={field} salary={monthData.salary} expenses={monthData.expenses} expensesUsd={monthData.expensesUsd || {}} paidStatus={monthData.paidStatus} extras={monthData.extras} defaultEditing={field.id === newFieldId} totalAllocatedPercentage={totalAllocatedPercentage} onUpdateExpense={handleUpdateExpense} onUpdateExpenseUsd={handleUpdateExpenseUsd} onTogglePaid={handleTogglePaid} onAddExtra={handleAddExtra} onDeleteExtra={handleDeleteExtra} onSaveField={handleSaveField} onDeleteField={handleDeleteField} />))}
           <div className="py-6 px-2 flex justify-center z-50 relative"><button onClick={handleAddNewField} className="w-full max-w-3xl bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl shadow-lg flex items-center justify-center gap-2 transition-transform hover:scale-[1.01] active:scale-95"><Plus size={24} /> Crear Nuevo Campo</button></div>
           <div ref={bottomRef} style={{height: '20px'}}></div>
       </div>
@@ -233,38 +253,89 @@ const App: React.FC = () => {
   const [authLoading, setAuthLoading] = useState(true);
   const [appData, setAppData] = useState<AppData>(DEFAULT_APP_DATA);
   const [dataInitialized, setDataInitialized] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const [lluvias, setLluvias] = useState<number[]>([]);
+  const [groupId, setGroupId] = useState<string | null>(() => localStorage.getItem('active_group_id'));
+  const [showGroupModal, setShowGroupModal] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
+  const [showPinSetup, setShowPinSetup] = useState(false);
+
+  useEffect(() => { const savedPin = localStorage.getItem('app_pin'); if (savedPin) setIsLocked(true); }, []);
 
   useEffect(() => { const unsubscribe = onAuthStateChanged(auth, (u) => { setUser(u); setAuthLoading(false); }); return () => unsubscribe(); }, []);
-  
+
   useEffect(() => {
     if (user) {
       setDataInitialized(false);
-      fetchAppData(user.uid).then((data) => {
+      // LÓGICA CLAVE: Si hay grupo, leemos grupo. Si no, leemos usuario privado.
+      const targetId = groupId || user.uid;
+      
+      fetchAppData(targetId).then((data) => {
         if (data.fields && data.fields.length > 0) { setAppData(data); } 
         else { setAppData(prev => ({ ...prev, ...data, fields: INITIAL_FIELDS })); }
         setDataInitialized(true);
       });
     }
-  }, [user]);
+  }, [user, groupId]);
 
-  const handleSaveData = async (newData: AppData) => { setAppData(newData); if (user) { await saveAppData(user.uid, newData); } };
+  const handleSaveData = async (newData: AppData) => { setAppData(newData); if (user) { const targetId = groupId || user.uid; await saveAppData(targetId, newData); } };
   const handleToggleTheme = async () => { const newTheme = appData.theme === 'light' ? 'dark' : 'light'; const newData = { ...appData, theme: newTheme }; handleSaveData(newData); };
-  
-  useEffect(() => { setMounted(true); if (!document.getElementById('money-rain-style')) { const style = document.createElement('style'); style.id = 'money-rain-style'; style.innerHTML = `@keyframes money-rain { 0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; } 100% { transform: translateY(110vh) rotate(360deg); opacity: 0; } } .animate-money-rain { animation: money-rain linear forwards; pointer-events: none; }`; document.head.appendChild(style); } }, []);
+
+  const handleJoinGroup = (newGroupId: string) => { localStorage.setItem('active_group_id', newGroupId); setGroupId(newGroupId); setShowGroupModal(false); };
+  const handleLeaveGroup = () => { localStorage.removeItem('active_group_id'); setGroupId(null); setShowGroupModal(false); };
+
+  const handleUnlock = () => setIsLocked(false);
+  const handleSetPin = (pin: string) => { localStorage.setItem('app_pin', pin); setShowPinSetup(false); setIsLocked(false); };
+  const handleRemovePin = () => { if(window.confirm("¿Deseas eliminar el bloqueo por PIN?")) { localStorage.removeItem('app_pin'); setShowPinSetup(false); } };
+
+  const [mounted, setMounted] = useState(false);
+  const [lluvias, setLluvias] = useState<number[]>([]);
+  useEffect(() => { setMounted(true); }, []);
   const triggerRain = () => { const id = Date.now(); setLluvias(prev => [...prev, id]); setTimeout(() => setLluvias(prev => prev.filter(x => x !== id)), 5000); };
+  useEffect(() => { if (!document.getElementById('money-rain-style')) { const style = document.createElement('style'); style.id = 'money-rain-style'; style.innerHTML = `@keyframes money-rain { 0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; } 100% { transform: translateY(110vh) rotate(360deg); opacity: 0; } } .animate-money-rain { animation: money-rain linear forwards; pointer-events: none; }`; document.head.appendChild(style); } }, []);
 
-  if (authLoading || (user && !dataInitialized)) {
-    return (<div className="min-h-screen flex items-center justify-center bg-gray-900 text-white flex-col gap-4"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div><span className="text-gray-400 text-sm">Cargando tus finanzas...</span></div>);
-  }
-
+  if (isLocked) return <PinLock mode="unlock" storedPin={localStorage.getItem('app_pin') || ''} onSuccess={handleUnlock} />;
+  if (authLoading || (user && !dataInitialized)) return (<div className="min-h-screen flex items-center justify-center bg-gray-900 text-white flex-col gap-4"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div><span className="text-gray-400 text-sm">Cargando finanzas...</span></div>);
   if (!user) return <LoginPage onLogin={() => {}} />;
 
   return (
     <>
         {mounted && createPortal(<>{lluvias.map(id => (<div key={id} className="fixed inset-0 pointer-events-none z-[99999] overflow-hidden">{Array.from({ length: 60 }).map((_, i) => (<div key={i} className="absolute text-4xl animate-money-rain" style={{ top: `-${Math.random() * 20}vh`, left: `${Math.random() * 100}vw`, animationDelay: `${Math.random() * 2}s`, animationDuration: `${2 + Math.random() * 3}s`, opacity: 0.8 + Math.random() * 0.2 }}>💵</div>))}</div>))}</>, document.body)}
-        <HashRouter><Layout theme={appData.theme} toggleTheme={handleToggleTheme} onMoneyClick={triggerRain}><Routes><Route path="/" element={<HomePage user={user} appData={appData} onSave={handleSaveData} />} /><Route path="/budget" element={<BudgetPage appData={appData} onSave={handleSaveData} />} /></Routes></Layout></HashRouter>
+        
+        {/* MODAL FLOTANTE (Ahora solo aparece si tocas el botón) */}
+        {showGroupModal && (
+            <GroupModal 
+                currentGroupId={groupId} 
+                onJoin={handleJoinGroup} 
+                onLeave={handleLeaveGroup} 
+                onClose={() => setShowGroupModal(false)} 
+            />
+        )}
+        
+        {showPinSetup && <PinLock mode="setup" onSuccess={handleSetPin} onCancel={() => setShowPinSetup(false)} />}
+
+        <HashRouter>
+            <Layout theme={appData.theme} toggleTheme={handleToggleTheme} onMoneyClick={triggerRain}>
+                <Routes>
+                    <Route path="/" element={
+                        <HomePage 
+                            user={user} 
+                            appData={appData} 
+                            onSave={handleSaveData} 
+                            groupId={groupId} 
+                            onChangeGroup={() => setShowGroupModal(true)} // <-- Abre el modal
+                            onOpenGroupModal={() => setShowGroupModal(true)}
+                            onSetupPin={() => {
+                                if (localStorage.getItem('app_pin')) {
+                                    handleRemovePin();
+                                } else {
+                                    setShowPinSetup(true);
+                                }
+                            }}
+                        />
+                    } />
+                    <Route path="/budget" element={<BudgetPage appData={appData} onSave={handleSaveData} groupId={groupId} />} />
+                </Routes>
+            </Layout>
+        </HashRouter>
     </>
   );
 };
