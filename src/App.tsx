@@ -23,47 +23,17 @@ const DEFAULT_APP_DATA: AppData = {
   months: {}
 };
 
-// --- HELPER FUNCTIONS MEJORADAS (Soporte Decimales) ---
+// --- HELPER FUNCTIONS ---
 const formatNumberDisplay = (val: string | number): string => {
   if (val === '' || val === undefined || val === null) return '';
-
-  // Si es número (viene de DB), formatear bonito
-  if (typeof val === 'number') {
-    return val.toLocaleString('es-AR', { maximumFractionDigits: 2 });
-  }
-
-  // Si es string (estamos escribiendo)
-  // 1. Permitir solo números y coma
-  let clean = val.replace(/[^0-9,]/g, '');
-  
-  // 2. Manejar decimales
-  const parts = clean.split(',');
-  const integerPart = parts[0].replace(/\./g, ''); // Limpiar puntos viejos
-  
-  // 3. Agregar puntos de mil
-  const formattedInt = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-
-  // 4. Retornar (Si hay coma, la agregamos al final)
-  if (parts.length > 1) {
-     return `${formattedInt},${parts[1].slice(0, 2)}`; // Max 2 decimales
-  }
-  
-  // Truco: Si el usuario escribió la coma al final, la mantenemos para que pueda seguir escribiendo decimales
-  if (val.endsWith(',')) {
-      return `${formattedInt},`;
-  }
-
-  return formattedInt;
+  const stringVal = val.toString().replace(/\./g, '');
+  if (isNaN(Number(stringVal))) return val.toString();
+  return Number(stringVal).toLocaleString('es-AR');
 };
 
 const parseNumberInput = (val: string): number => {
-  // 1. Quitar puntos de miles
-  const noDots = val.replace(/\./g, '');
-  // 2. Cambiar coma por punto (para que JS entienda)
-  const withDot = noDots.replace(',', '.');
-  // 3. Parsear
-  const num = parseFloat(withDot);
-  return isNaN(num) ? 0 : num;
+  const clean = val.replace(/\./g, '');
+  return clean === '' ? 0 : parseFloat(clean);
 };
 
 const getMonthDataSafe = (appData: AppData, year: number, month: number): MonthlyData => {
@@ -96,8 +66,12 @@ const LoginPage = ({ onLogin }: { onLogin: () => void }) => {
         <p className="text-gray-500 dark:text-gray-400 mb-8">Gestiona tu presupuesto inteligentemente</p>
         {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm">{error}</div>}
         <div className="space-y-3">
-            <button onClick={handleGoogleLogin} disabled={loading} className="w-full py-3 px-4 bg-white hover:bg-gray-50 text-gray-700 font-semibold rounded-xl border border-gray-300 shadow-sm flex items-center justify-center gap-3 transition-all hover:shadow-md disabled:opacity-50">{loading ? <span>Cargando...</span> : <><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5 mr-2" alt="google" /><span>Ingresar con Google</span></>}</button>
-            <button onClick={handleGuestLogin} disabled={loading} className="w-full py-3 px-4 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-200 font-semibold rounded-xl flex items-center justify-center gap-3 transition-all disabled:opacity-50"><UserCircle size={20} /><span>Continuar como Invitado</span></button>
+            <button onClick={handleGoogleLogin} disabled={loading} className="w-full py-3 px-4 bg-white hover:bg-gray-50 text-gray-700 font-semibold rounded-xl border border-gray-300 shadow-sm flex items-center justify-center gap-3 transition-all hover:shadow-md disabled:opacity-50">
+            {loading ? <span>Cargando...</span> : <><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="google" /><span>Ingresar con Google</span></>}
+            </button>
+            <button onClick={handleGuestLogin} disabled={loading} className="w-full py-3 px-4 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-200 font-semibold rounded-xl flex items-center justify-center gap-3 transition-all disabled:opacity-50">
+                <UserCircle size={20} /><span>Continuar como Invitado</span>
+            </button>
         </div>
       </div>
     </div>
@@ -110,7 +84,6 @@ const HomePage = ({ user, appData, onSave }: { user: FirebaseUser | null, appDat
   const [year, setYear] = useState(() => { const s = localStorage.getItem('last_view_year'); return s ? parseInt(s) : new Date().getFullYear(); });
   const [month, setMonth] = useState(() => { const s = localStorage.getItem('last_view_month'); return s ? parseInt(s) : new Date().getMonth(); });
   const [salary, setSalary] = useState('');
-  
   const displayName = user?.displayName || (user?.isAnonymous ? 'Invitado' : 'Usuario');
   const photoURL = user?.photoURL;
 
@@ -124,21 +97,17 @@ const HomePage = ({ user, appData, onSave }: { user: FirebaseUser | null, appDat
     e.preventDefault();
     localStorage.setItem('last_view_year', year.toString());
     localStorage.setItem('last_view_month', month.toString());
-    
     const salaryNum = parseNumberInput(salary);
     if (salaryNum > 0) {
       const key = `${year}-${String(month + 1).padStart(2, '0')}`;
       const currentMonth = appData.months[key] || { salary: 0, expenses: {}, expensesUsd: {}, paidStatus: {}, extras: {} };
       const newData = { ...appData, months: { ...appData.months, [key]: { ...currentMonth, salary: salaryNum } } };
-      
       onSave(newData);
-      localStorage.setItem('last_known_salary', salaryNum.toString());
       navigate(`/budget?year=${year}&month=${month + 1}`);
     }
   };
 
   const handleSalaryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // CAMBIO AQUÍ: Permitimos todo lo que escriba el usuario, el formateador se encarga
     const raw = e.target.value; 
     setSalary(formatNumberDisplay(raw));
   };
@@ -173,152 +142,82 @@ const BudgetPage = ({ appData, onSave }: { appData: AppData, onSave: (data: AppD
   const navigate = useNavigate();
   const year = Number(searchParams.get('year'));
   const month = Number(searchParams.get('month'));
-  
   const monthKey = `${year}-${String(month).padStart(2, '0')}`;
   const monthData = appData.months[monthKey] || { salary: 0, expenses: {}, expensesUsd: {}, paidStatus: {}, extras: {} };
-
   const [showRecurringModal, setShowRecurringModal] = useState(false);
   const [recurringItems, setRecurringItems] = useState<any[]>([]);
   const [showBalance, setShowBalance] = useState(true);
   const [activeChart, setActiveChart] = useState<'none' | 'pie' | 'bar'>('none');
-  
   const [newFieldId, setNewFieldId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (newFieldId && bottomRef.current) {
-      setTimeout(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, 150);
-    }
-  }, [newFieldId, appData.fields.length]);
+  useEffect(() => { if (newFieldId && bottomRef.current) { setTimeout(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, 150); } }, [newFieldId, appData.fields.length]);
 
-  // Recurrentes
   useEffect(() => {
     if (!monthData.recurringApplied && appData.fields.length > 0) {
       const foundRecurring: any[] = [];
-      appData.fields.forEach(field => {
-        field.categories.forEach(cat => {
-          cat.subcategories.forEach(sub => {
-            if (sub.recurringAmount && sub.recurringAmount > 0) {
-               if (!monthData.expenses[sub.id]) foundRecurring.push({ subId: sub.id, name: sub.name, categoryName: cat.name, fieldName: field.name, amount: sub.recurringAmount });
-            }
-          });
-        });
-      });
+      appData.fields.forEach(field => { field.categories.forEach(cat => { cat.subcategories.forEach(sub => { if (sub.recurringAmount && sub.recurringAmount > 0) { if (!monthData.expenses[sub.id]) foundRecurring.push({ subId: sub.id, name: sub.name, categoryName: cat.name, fieldName: field.name, amount: sub.recurringAmount }); } }); }); });
       if (foundRecurring.length > 0) { setRecurringItems(foundRecurring); setShowRecurringModal(true); } 
-      else { 
-          const newData = { ...appData, months: { ...appData.months, [monthKey]: { ...monthData, recurringApplied: true } } };
-          onSave(newData);
-      }
+      else { const newData = { ...appData, months: { ...appData.months, [monthKey]: { ...monthData, recurringApplied: true } } }; onSave(newData); }
     }
-  }, [monthKey]); 
+  }, [monthKey]);
 
-  const updateMonth = (updates: Partial<MonthlyData>) => {
-      const newData = { ...appData, months: { ...appData.months, [monthKey]: { ...monthData, ...updates } } };
-      onSave(newData);
-  };
-
-  const handleUpdateExpense = (subId: string, val: number) => {
-    const newExpenses = { ...monthData.expenses, [subId]: val };
-    updateMonth({ expenses: newExpenses });
-  };
-  const handleUpdateExpenseUsd = (subId: string, val: number) => {
-    const newExpensesUsd = { ...(monthData.expensesUsd || {}), [subId]: val };
-    updateMonth({ expensesUsd: newExpensesUsd });
-  };
-  const handleTogglePaid = (subId: string, val: boolean) => {
-    const newPaid = { ...monthData.paidStatus, [subId]: val };
-    updateMonth({ paidStatus: newPaid });
-  };
-  const handleAddExtra = (fieldId: string, description: string, amount: number) => {
-    const currentExtras = monthData.extras[fieldId] || [];
-    const newExtras = [...currentExtras, { id: `e_${Date.now()}`, description, amount, fieldId }];
-    const extrasMap = { ...monthData.extras, [fieldId]: newExtras };
-    updateMonth({ extras: extrasMap });
-  };
-  const handleDeleteExtra = (fieldId: string, extraId: string) => {
-    const currentExtras = monthData.extras[fieldId] || [];
-    const newExtras = currentExtras.filter(e => e.id !== extraId);
-    const extrasMap = { ...monthData.extras, [fieldId]: newExtras };
-    updateMonth({ extras: extrasMap });
-  };
-  const handleSaveField = (updatedField: Field) => {
-    const newFields = appData.fields.map(f => f.id === updatedField.id ? updatedField : f);
-    const newData = { ...appData, fields: newFields };
-    onSave(newData);
-    setNewFieldId(null);
-  };
-  const handleDeleteField = (fieldId: string) => {
-     if (window.confirm("¿Seguro que quieres eliminar este campo?")) {
-         const newFields = appData.fields.filter(f => f.id !== fieldId);
-         const newData = { ...appData, fields: newFields };
-         onSave(newData);
-     }
+  const updateMonth = (updates: Partial<MonthlyData>) => { const newData = { ...appData, months: { ...appData.months, [monthKey]: { ...monthData, ...updates } } }; onSave(newData); };
+  const handleUpdateExpense = (subId: string, val: number) => { updateMonth({ expenses: { ...monthData.expenses, [subId]: val } }); };
+  const handleUpdateExpenseUsd = (subId: string, val: number) => { updateMonth({ expensesUsd: { ...monthData.expensesUsd || {}, [subId]: val } }); };
+  const handleTogglePaid = (subId: string, val: boolean) => { updateMonth({ paidStatus: { ...monthData.paidStatus, [subId]: val } }); };
+  const handleAddExtra = (fid: string, d: string, a: number) => { updateMonth({ extras: { ...monthData.extras, [fid]: [...(monthData.extras[fid] || []), { id: `e_${Date.now()}`, description: d, amount: a, fieldId: fid }] } }); };
+  const handleDeleteExtra = (fid: string, eid: string) => { updateMonth({ extras: { ...monthData.extras, [fid]: (monthData.extras[fid] || []).filter(e => e.id !== eid) } }); };
+  const handleSaveField = (uF: Field) => { const newFields = appData.fields.map(f => f.id === uF.id ? uF : f); const newData = { ...appData, fields: newFields }; onSave(newData); setNewFieldId(null); };
+  const handleDeleteField = (fid: string) => { if (window.confirm("¿Seguro?")) { const newFields = appData.fields.filter(f => f.id !== fid); const newData = { ...appData, fields: newFields }; onSave(newData); } };
+  
+  // NUEVA FUNCIÓN: MOVER CAMPO
+  const handleMoveField = (fieldId: string, direction: 'up' | 'down') => {
+      const index = appData.fields.findIndex(f => f.id === fieldId);
+      if (index < 0) return;
+      const newFields = [...appData.fields];
+      if (direction === 'up' && index > 0) {
+          [newFields[index], newFields[index - 1]] = [newFields[index - 1], newFields[index]];
+      } else if (direction === 'down' && index < newFields.length - 1) {
+          [newFields[index], newFields[index + 1]] = [newFields[index + 1], newFields[index]];
+      }
+      onSave({ ...appData, fields: newFields });
   };
 
-  const handleAddNewField = () => {
-      const newId = `f_${Date.now()}`;
-      const newField: Field = {
-          id: newId, name: 'Nuevo Campo', percentage: 0, color: 'gray', icon: 'DollarSign',
-          categories: [{ id: `c_${Date.now()}`, name: 'General', subcategories: [] }],
-          type: 'standard', alertThreshold: 80
-      };
-      const newFields = [...appData.fields, newField];
-      const newData = { ...appData, fields: newFields };
-      onSave(newData);
-      setNewFieldId(newId);
-  };
+  const handleAddNewField = () => { const newId = `f_${Date.now()}`; const newField: Field = { id: newId, name: 'Nuevo Campo', percentage: 0, color: 'gray', icon: 'DollarSign', categories: [{ id: `c_${Date.now()}`, name: 'General', subcategories: [] }], type: 'standard', alertThreshold: 80 }; const newData = { ...appData, fields: [...appData.fields, newField] }; onSave(newData); setNewFieldId(newId); };
 
-  const totalExpenses = (Object.values(monthData.expenses) as number[]).reduce((a, b) => a + b, 0) + (Object.values(monthData.extras) as { amount: number }[][]).reduce((acc, items) => acc + items.reduce((sum, item) => sum + item.amount, 0), 0);
+  const totalExpenses = (Object.values(monthData.expenses) as number[]).reduce((a, b) => a + b, 0) + (Object.values(monthData.extras) as { amount: number }[][]).reduce((acc, items) => acc + items.reduce((s, i) => s + i.amount, 0), 0);
   const available = monthData.salary - totalExpenses;
   const totalAllocatedPercentage = appData.fields.reduce((acc, field) => acc + field.percentage, 0);
-
-  const alerts = appData.fields.map(field => {
-     if (field.type === 'savings') return null;
-     const budget = (monthData.salary * field.percentage) / 100;
-     const subTotal = Object.keys(monthData.expenses).reduce((acc, key) => {
-        const isForThisField = field.categories.some(c => c.subcategories.some(s => s.id === key));
-        return isForThisField ? acc + (monthData.expenses[key] || 0) : acc;
-      }, 0);
-      const extraTotal = (monthData.extras[field.id] || []).reduce((acc, item) => acc + item.amount, 0);
-      const totalSpent = subTotal + extraTotal;
-      const pct = budget > 0 ? (totalSpent / budget) * 100 : 0;
-      const threshold = field.alertThreshold || 80;
-      if (pct >= threshold) return { fieldName: field.name, pct, isOver: pct >= 100 };
-      return null;
-  }).filter(Boolean);
+  const alerts = appData.fields.map(field => { if (field.type === 'savings') return null; const budget = (monthData.salary * field.percentage) / 100; const subTotal = Object.keys(monthData.expenses).reduce((acc, key) => { const isFor = field.categories.some(c => c.subcategories.some(s => s.id === key)); return isFor ? acc + (monthData.expenses[key] || 0) : acc; }, 0); const extraTotal = (monthData.extras[field.id] || []).reduce((acc, item) => acc + item.amount, 0); const totalSpent = subTotal + extraTotal; const pct = budget > 0 ? (totalSpent / budget) * 100 : 0; if (pct >= (field.alertThreshold || 80)) return { fieldName: field.name, pct, isOver: pct >= 100 }; return null; }).filter(Boolean);
 
   if (activeChart !== 'none') return <BudgetCharts fields={appData.fields} salary={monthData.salary} expenses={monthData.expenses} extras={monthData.extras} theme={appData.theme} viewMode={activeChart} onBack={() => setActiveChart('none')} />;
 
   return (
     <div>
       {showRecurringModal && <RecurringModal items={recurringItems} onConfirm={(ids: string[]) => { const newExpenses = { ...monthData.expenses }; recurringItems.forEach(item => { if (ids.includes(item.subId)) newExpenses[item.subId] = item.amount; }); updateMonth({ expenses: newExpenses, recurringApplied: true }); setShowRecurringModal(false); }} onCancel={() => { updateMonth({ recurringApplied: true }); setShowRecurringModal(false); }} />}
-      
       <div className="bg-gradient-to-br from-gray-800 to-gray-900 dark:from-gray-800 dark:to-black rounded-2xl p-6 text-white shadow-xl mb-6 relative overflow-hidden">
          <div className="absolute top-0 right-0 p-4 opacity-10"><DollarSign size={120} /></div>
          <div className="relative z-10">
              <div className="flex items-center justify-between mb-4"><div className="flex items-center gap-2"><button onClick={() => navigate('/')} className="text-gray-300 hover:text-white"><ArrowLeft size={24} /></button><h2 className="text-2xl font-bold">{MONTHS[month - 1]} {year}</h2></div><button onClick={() => setShowBalance(!showBalance)} className="p-2 text-gray-300 hover:text-white hover:bg-white/10 rounded-full transition-colors">{showBalance ? <Eye size={20} /> : <EyeOff size={20} />}</button></div>
              <div className="grid grid-cols-2 gap-4 mb-6"><div className="bg-white/10 rounded-xl p-4 backdrop-blur-sm"><div className="text-xs text-blue-300 uppercase font-bold mb-1">Ingresos</div><div className="text-xl font-mono font-bold">{showBalance ? `$${formatNumberDisplay(monthData.salary)}` : '****'}</div></div><div className="bg-white/10 rounded-xl p-4 backdrop-blur-sm"><div className="text-xs text-purple-300 uppercase font-bold mb-1">Gastos</div><div className="text-xl font-mono font-bold">${formatNumberDisplay(totalExpenses)}</div></div></div>
-             <div className="flex justify-between items-end">
-                <div className="text-center">
-                    <div className="text-sm text-gray-400 uppercase mb-1">Disponible Global</div>
-                    <div className={`text-3xl font-bold font-mono ${available < 0 ? 'text-red-400' : 'text-green-400'}`}>{showBalance ? `$${formatNumberDisplay(available)}` : '****'}</div>
-                </div>
-                <div className={`text-xs px-2 py-1 rounded ${totalAllocatedPercentage > 100 ? 'bg-red-500 text-white' : 'bg-green-900/50 text-green-400'}`}>Asignado: {totalAllocatedPercentage}%</div>
-             </div>
+             <div className="flex justify-between items-end"><div className="text-center"><div className="text-sm text-gray-400 uppercase mb-1">Disponible Global</div><div className={`text-3xl font-bold font-mono ${available < 0 ? 'text-red-400' : 'text-green-400'}`}>{showBalance ? `$${formatNumberDisplay(available)}` : '****'}</div></div><div className={`text-xs px-2 py-1 rounded ${totalAllocatedPercentage > 100 ? 'bg-red-500 text-white' : 'bg-green-900/50 text-green-400'}`}>Asignado: {totalAllocatedPercentage}%</div></div>
          </div>
       </div>
-
       {alerts.length > 0 && <div className="mb-6 space-y-2">{alerts.map((alert, idx) => <div key={idx} className={`p-3 rounded-lg flex items-center gap-2 text-sm font-bold ${alert?.isOver ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-yellow-100 text-yellow-700 border border-yellow-300'}`}><AlertTriangle size={18} /><span>{alert?.fieldName}: {alert?.isOver ? '¡Presupuesto Excedido!' : `Alcanzó el ${alert?.pct.toFixed(0)}%`}</span></div>)}</div>}
-      
       <div className="grid grid-cols-2 gap-4 mb-6"><button onClick={() => setActiveChart('pie')} className="bg-white dark:bg-dark-card p-4 rounded-xl shadow hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border dark:border-gray-700 flex flex-col items-center justify-center gap-2 text-gray-700 dark:text-gray-300"><PieIcon size={32} className="text-blue-500"/><span className="font-bold text-sm">Distribución de Gastos</span></button><button onClick={() => setActiveChart('bar')} className="bg-white dark:bg-dark-card p-4 rounded-xl shadow hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border dark:border-gray-700 flex flex-col items-center justify-center gap-2 text-gray-700 dark:text-gray-300"><BarIcon size={32} className="text-purple-500"/><span className="font-bold text-sm">Presupuesto vs Realidad</span></button></div>
-      
       <div className="flex flex-col gap-6 pb-24">
-          {appData.fields.map(field => (
+          {appData.fields.map((field, idx) => (
               <FieldAccordion 
                 key={field.id} field={field} salary={monthData.salary} expenses={monthData.expenses} expensesUsd={monthData.expensesUsd || {}} paidStatus={monthData.paidStatus} extras={monthData.extras} 
                 defaultEditing={field.id === newFieldId}
                 totalAllocatedPercentage={totalAllocatedPercentage}
-                onUpdateExpense={handleUpdateExpense} onUpdateExpenseUsd={handleUpdateExpenseUsd} onTogglePaid={handleTogglePaid} onAddExtra={handleAddExtra} onDeleteExtra={handleDeleteExtra} onSaveField={handleSaveField} onDeleteField={handleDeleteField} 
+                onUpdateExpense={handleUpdateExpense} onUpdateExpenseUsd={handleUpdateExpenseUsd} onTogglePaid={handleTogglePaid} onAddExtra={handleAddExtra} onDeleteExtra={handleDeleteExtra} onSaveField={handleSaveField} onDeleteField={handleDeleteField}
+                // PASAR FUNCIONES DE MOVER
+                onMoveUp={() => handleMoveField(field.id, 'up')}
+                onMoveDown={() => handleMoveField(field.id, 'down')}
+                isFirst={idx === 0}
+                isLast={idx === appData.fields.length - 1}
               />
           ))}
           <div className="py-6 px-2 flex justify-center z-50 relative"><button onClick={handleAddNewField} className="w-full max-w-3xl bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl shadow-lg flex items-center justify-center gap-2 transition-transform hover:scale-[1.01] active:scale-95"><Plus size={24} /> Crear Nuevo Campo</button></div>
@@ -356,7 +255,10 @@ const App: React.FC = () => {
   useEffect(() => { setMounted(true); if (!document.getElementById('money-rain-style')) { const style = document.createElement('style'); style.id = 'money-rain-style'; style.innerHTML = `@keyframes money-rain { 0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; } 100% { transform: translateY(110vh) rotate(360deg); opacity: 0; } } .animate-money-rain { animation: money-rain linear forwards; pointer-events: none; }`; document.head.appendChild(style); } }, []);
   const triggerRain = () => { const id = Date.now(); setLluvias(prev => [...prev, id]); setTimeout(() => setLluvias(prev => prev.filter(x => x !== id)), 5000); };
 
-  if (authLoading || (user && !dataInitialized)) return (<div className="min-h-screen flex items-center justify-center bg-gray-900 text-white flex-col gap-4"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div><span className="text-gray-400 text-sm">Cargando tus finanzas...</span></div>);
+  if (authLoading || (user && !dataInitialized)) {
+    return (<div className="min-h-screen flex items-center justify-center bg-gray-900 text-white flex-col gap-4"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div><span className="text-gray-400 text-sm">Cargando tus finanzas...</span></div>);
+  }
+
   if (!user) return <LoginPage onLogin={() => {}} />;
 
   return (

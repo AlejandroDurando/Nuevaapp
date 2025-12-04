@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Field, Category, Subcategory } from '../types';
 import { ICON_MAP, COLORS } from '../constants';
 import * as Lucide from 'lucide-react';
-import { Pencil, Trash2, Plus, Check, X, MoreVertical, Save, ChevronDown, ChevronUp, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Pencil, Trash2, Plus, Check, X, MoreVertical, Save, ChevronDown, ChevronUp, AlertTriangle, RefreshCw, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface FieldAccordionProps {
   field: Field;
@@ -100,6 +100,31 @@ const FieldAccordion: React.FC<FieldAccordionProps> = ({
   };
   const handleCancel = () => { setEditedField(JSON.parse(JSON.stringify(field))); setIsEditing(false); };
   
+  // --- LOGICA DE REORDENAMIENTO INTERNO (Categorías) ---
+  const handleMoveCategory = (idx: number, direction: 'up' | 'down') => {
+      const newCats = [...editedField.categories];
+      if (direction === 'up' && idx > 0) {
+          [newCats[idx], newCats[idx - 1]] = [newCats[idx - 1], newCats[idx]];
+      } else if (direction === 'down' && idx < newCats.length - 1) {
+          [newCats[idx], newCats[idx + 1]] = [newCats[idx + 1], newCats[idx]];
+      }
+      setEditedField({ ...editedField, categories: newCats });
+  };
+
+  // --- LOGICA DE REORDENAMIENTO INTERNO (Subcategorías) ---
+  const handleMoveSub = (catIdx: number, subIdx: number, direction: 'up' | 'down') => {
+      const newCats = [...editedField.categories];
+      const subs = [...newCats[catIdx].subcategories];
+      
+      if (direction === 'up' && subIdx > 0) {
+          [subs[subIdx], subs[subIdx - 1]] = [subs[subIdx - 1], subs[subIdx]];
+      } else if (direction === 'down' && subIdx < subs.length - 1) {
+          [subs[subIdx], subs[subIdx + 1]] = [subs[subIdx + 1], subs[subIdx]];
+      }
+      newCats[catIdx].subcategories = subs;
+      setEditedField({ ...editedField, categories: newCats });
+  };
+
   const handleAddCategory = () => {
     const newCat: Category = { id: `c_${Date.now()}`, name: 'Nueva Categoría', subcategories: [] };
     setEditedField({ ...editedField, categories: [...editedField.categories, newCat] });
@@ -117,48 +142,9 @@ const FieldAccordion: React.FC<FieldAccordionProps> = ({
     setEditedField({ ...editedField, categories: newCats });
   };
 
-  // Formatters mejorados para Inputs (Permiten escribir)
-  const formatInput = (val: string) => {
-    // Simplemente devolvemos el valor crudo para dejar escribir
-    // La validación numérica se hace al guardar o al perder foco si quisiéramos
-    // Pero para inputs controlados simples, pasamos el valor y dejamos que el parseo ocurra en el onUpdate
-    return val; 
-  };
-
-  // HANDLER ESPECIAL PARA GASTOS (INPUTS DE ACORDEÓN)
-  // Aquí hay un truco: Como el estado viene de props, si formateamos al vuelo se pierde la coma.
-  // Para este caso, permitimos escritura directa y solo parseamos al enviar.
-  // NOTA: Para los gastos (subcategorías) es mejor dejarlo simple (enteros) o usar un componente Input mask complejo.
-  // Por ahora, mantendremos la lógica simple para no romper la UX de los gastos rápidos.
-  const handleSubExpenseChange = (subId: string, val: string) => {
-      // Solo permitimos dígitos para gastos rápidos (la mayoría de la gente no pone centavos en el súper)
-      // Si realmente necesitas centavos aquí, avísame y creamos un componente local.
-      const raw = val.replace(/[^0-9]/g, '');
-      onUpdateExpense(subId, raw === '' ? 0 : parseInt(raw));
-  };
-
-  const handleSubExpenseUsdChange = (subId: string, val: string) => {
-      const raw = val.replace(/[^0-9]/g, '');
-      onUpdateExpenseUsd(subId, raw === '' ? 0 : parseInt(raw));
-  };
-  
-  // HANDLER PARA EXTRAS (Aquí sí aplicamos la lógica decimal porque es un input local)
-  const handleExtraAmountChange = (val: string) => {
-      // Permitir escribir la coma
-      let clean = val.replace(/[^0-9,]/g, '');
-      // Evitar doble coma
-      const parts = clean.split(',');
-      if (parts.length > 2) clean = parts[0] + ',' + parts.slice(1).join('');
-      
-      // Formatear parte entera si es posible, pero mantener la coma al final si se está escribiendo
-      if (clean.endsWith(',')) {
-          setExtraAmount(clean);
-      } else {
-          // Si no termina en coma, intentamos formatear bonito, pero cuidado con el cursor saltando
-          // Para simplificar la escritura, dejamos el valor "crudo" mientras se escribe
-          setExtraAmount(clean);
-      }
-  };
+  const handleSubExpenseChange = (subId: string, val: string) => onUpdateExpense(subId, parseNumberInput(val));
+  const handleSubExpenseUsdChange = (subId: string, val: string) => onUpdateExpenseUsd(subId, parseNumberInput(val));
+  const handleExtraAmountChange = (val: string) => setExtraAmount(val === '' ? '' : formatNumberDisplay(parseNumberInput(val)));
 
   if (isEditing) {
     return (
@@ -200,7 +186,7 @@ const FieldAccordion: React.FC<FieldAccordionProps> = ({
                         placeholder="0"
                         className={`w-full p-2 rounded-lg bg-gray-50 dark:bg-gray-800 border dark:text-white ${isOverLimit ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200 dark:border-gray-600'}`}
                     />
-                    <div className="text-xs text-gray-400 mt-1">Disponible: {availableSpace}%</div>
+                    <div className="text-xs text-gray-400 mt-1">Disponible para asignar: {availableSpace}%</div>
                 </div>
             </div>
 
@@ -232,15 +218,25 @@ const FieldAccordion: React.FC<FieldAccordionProps> = ({
         {/* Categorías */}
         <div className="space-y-4 border-t border-gray-100 dark:border-gray-700 pt-4">
           <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Estructura</label>
-          {editedField.categories.map(cat => (
+          {editedField.categories.map((cat, catIdx) => (
              <div key={cat.id} className="border border-gray-200 dark:border-gray-700 p-3 rounded-lg bg-gray-50 dark:bg-gray-900/30">
                <div className="flex justify-between items-center mb-2">
-                  <input value={cat.name} onChange={(e) => { const newCats = editedField.categories.map(c => c.id === cat.id ? {...c, name: e.target.value} : c); setEditedField({...editedField, categories: newCats}); }} className="font-bold bg-transparent border-b border-gray-300 dark:border-gray-600 focus:outline-none dark:text-white"/>
+                  <div className="flex items-center gap-2 flex-1">
+                      <div className="flex flex-col">
+                        {catIdx > 0 && <button onClick={() => handleMoveCategory(catIdx, 'up')} className="p-0.5 text-gray-400 hover:text-blue-500"><ArrowUp size={14}/></button>}
+                        {catIdx < editedField.categories.length - 1 && <button onClick={() => handleMoveCategory(catIdx, 'down')} className="p-0.5 text-gray-400 hover:text-blue-500"><ArrowDown size={14}/></button>}
+                      </div>
+                      <input value={cat.name} onChange={(e) => { const newCats = editedField.categories.map(c => c.id === cat.id ? {...c, name: e.target.value} : c); setEditedField({...editedField, categories: newCats}); }} className="font-bold bg-transparent border-b border-gray-300 dark:border-gray-600 focus:outline-none dark:text-white flex-1"/>
+                  </div>
                   <button onClick={() => handleDeleteCategory(cat.id)} className="text-red-400 hover:text-red-600"><Trash2 size={16}/></button>
                </div>
                <div className="pl-4 space-y-2">
-                  {cat.subcategories.map(sub => (
+                  {cat.subcategories.map((sub, subIdx) => (
                     <div key={sub.id} className="flex items-center gap-2">
+                      <div className="flex flex-col">
+                         {subIdx > 0 && <button onClick={() => handleMoveSub(catIdx, subIdx, 'up')} className="p-0.5 text-gray-300 hover:text-blue-500"><ArrowUp size={12}/></button>}
+                         {subIdx < cat.subcategories.length - 1 && <button onClick={() => handleMoveSub(catIdx, subIdx, 'down')} className="p-0.5 text-gray-300 hover:text-blue-500"><ArrowDown size={12}/></button>}
+                      </div>
                       <input value={sub.name} onChange={(e) => { const newCats = editedField.categories.map(c => { if(c.id === cat.id) { return {...c, subcategories: c.subcategories.map(s => s.id === sub.id ? {...s, name: e.target.value}: s)} } return c; }); setEditedField({...editedField, categories: newCats}); }} className="flex-1 text-sm bg-transparent border-b border-gray-300 dark:border-gray-600 dark:text-gray-300 focus:border-blue-500"/>
                       <button onClick={() => handleDeleteSub(cat.id, sub.id)} className="text-red-400 hover:text-red-600"><X size={14}/></button>
                     </div>
@@ -262,28 +258,21 @@ const FieldAccordion: React.FC<FieldAccordionProps> = ({
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-4 cursor-pointer flex-1" onClick={() => setIsOpen(!isOpen)}>
             <div className={`p-3.5 rounded-xl bg-${field.color}-500/10 text-${field.color}-500 shadow-sm border border-${field.color}-100 dark:border-${field.color}-900/30`}><IconComponent size={26} /></div>
-            <div className="flex-1">
-              <h3 className="font-bold text-lg dark:text-white flex items-center gap-2">{field.name}{alertIcon}</h3>
-              <div className={`text-sm ${statusColor} font-medium`}>{field.percentage}% del sueldo • {formatNumberDisplay(budget)}</div>
-            </div>
+            <div className="flex-1"><h3 className="font-bold text-lg dark:text-white flex items-center gap-2">{field.name}{alertIcon}</h3><div className={`text-sm ${statusColor} font-medium`}>{field.percentage}% del sueldo • {formatNumberDisplay(budget)}</div></div>
           </div>
           <div className="relative ml-2 flex items-center gap-2">
                <button onClick={() => setIsOpen(!isOpen)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 bg-gray-100 dark:bg-gray-800 p-1.5 rounded-lg transition-colors">{isOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}</button>
                <button onClick={() => setMenuOpen(!menuOpen)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"><MoreVertical size={20} /></button>
             {menuOpen && (
               <div className="absolute right-0 top-10 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-2xl z-20 border border-gray-100 dark:border-gray-700 overflow-hidden ring-1 ring-black/5">
+                {/* SIN CONTROLES DE SUBIR/BAJAR CAMPO */}
                 <button onClick={() => { setIsEditing(true); setMenuOpen(false); setIsOpen(true); }} className="block w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm dark:text-white transition-colors border-b border-gray-100 dark:border-gray-700"><div className="flex items-center gap-2"><Pencil size={16} className="text-blue-500"/> Editar Campo</div></button>
                 <button onClick={() => onDeleteField(field.id)} className="block w-full text-left px-4 py-3 hover:bg-red-50 dark:hover:bg-red-900/20 text-sm text-red-500 transition-colors"><div className="flex items-center gap-2"><Trash2 size={16}/> Eliminar</div></button>
               </div>
             )}
           </div>
         </div>
-        {field.type === 'standard' && (
-          <div className="mt-5">
-             <div className="h-2.5 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden shadow-inner"><div className={`h-full ${progressBarColor} transition-all duration-700 ease-out`} style={{ width: `${Math.min(percentUsed, 100)}%` }}></div></div>
-             <div className="flex justify-between mt-2 text-xs font-bold tracking-wide uppercase"><span className="text-gray-500 dark:text-gray-400">Gastado: <span className="text-gray-700 dark:text-white">{formatNumberDisplay(totalSpent)}</span></span><span className={`${remainingColor}`}>Restante: {formatNumberDisplay(remaining)}</span></div>
-          </div>
-        )}
+        {field.type === 'standard' && ( <div className="mt-5"><div className="h-2.5 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden shadow-inner"><div className={`h-full ${progressBarColor} transition-all duration-700 ease-out`} style={{ width: `${Math.min(percentUsed, 100)}%` }}></div></div><div className="flex justify-between mt-2 text-xs font-bold tracking-wide uppercase"><span className="text-gray-500 dark:text-gray-400">Gastado: <span className="text-gray-700 dark:text-white">{formatNumberDisplay(totalSpent)}</span></span><span className={`${remainingColor}`}>Restante: {formatNumberDisplay(remaining)}</span></div></div>)}
         {field.type === 'savings' && ( <div className="mt-4 flex justify-between text-sm font-semibold p-3 bg-green-50 dark:bg-green-900/10 rounded-lg border border-green-100 dark:border-green-900/30"><span className="text-green-600 dark:text-green-400">Acumulado Total</span><span className="text-green-700 dark:text-green-300 font-mono text-lg">{formatNumberDisplay(totalSpent)}</span></div>)}
       </div>
 
@@ -297,97 +286,22 @@ const FieldAccordion: React.FC<FieldAccordionProps> = ({
                      const isPaid = paidStatus[sub.id] || false;
                      const displayValue = expenses[sub.id] ? formatNumberDisplay(expenses[sub.id]) : '';
                      const displayValueUsd = expensesUsd[sub.id] ? formatNumberDisplay(expensesUsd[sub.id]) : '';
-                     const isInvestment = field.id === 'f_investment';
-
                      return (
                       <div key={sub.id} className="group bg-white dark:bg-dark-card rounded-xl p-3 shadow-sm border border-gray-100 dark:border-gray-800 flex items-center gap-3 transition-shadow hover:shadow-md">
                         <button onClick={() => onTogglePaid(sub.id, !isPaid)} className={`w-8 h-8 rounded-lg flex items-center justify-center border-2 transition-all ${isPaid ? 'bg-green-500 border-green-500 text-white shadow-green-500/30 shadow-lg scale-105' : 'border-gray-300 dark:border-gray-600 text-transparent hover:border-blue-400'}`}><Check size={16} strokeWidth={3} /></button>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex justify-between items-baseline">
-                            <label className="text-sm font-medium text-gray-700 dark:text-gray-200 truncate pr-2">{sub.name}</label>
-                            {(sub.recurringAmount || 0) > 0 && ( <span className="text-[10px] font-bold text-blue-500 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full flex items-center gap-1"><RefreshCw size={8}/> Auto</span>)}
-                          </div>
-                          <div className="relative mt-1">
-                            <span className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-semibold pl-2">$</span>
-                            <input 
-                              type="text"
-                              value={displayValue}
-                              onChange={(e) => handleSubExpenseChange(sub.id, e.target.value)}
-                              placeholder="0"
-                              className="w-full bg-transparent border-none p-0 pl-6 text-base font-semibold text-gray-900 dark:text-white placeholder-gray-300 focus:ring-0 focus:outline-none"
-                            />
-                          </div>
-                        </div>
-
-                        {/* USD Input for Investment Field */}
-                        {isInvestment && (
-                             <div className="w-24 ml-2 pl-3 border-l border-gray-100 dark:border-gray-700">
-                                 <div className="flex justify-between items-baseline">
-                                    <label className="text-[10px] font-bold text-green-600 dark:text-green-400 tracking-wide">USD</label>
-                                 </div>
-                                 <div className="relative mt-1">
-                                    <span className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-semibold">US$</span>
-                                    <input 
-                                        type="text"
-                                        value={displayValueUsd}
-                                        onChange={(e) => handleSubExpenseUsdChange(sub.id, e.target.value)}
-                                        placeholder="0"
-                                        className="w-full bg-transparent border-none p-0 pl-7 text-sm font-mono font-medium text-gray-700 dark:text-gray-300 placeholder-gray-300 focus:outline-none"
-                                    />
-                                 </div>
-                             </div>
-                        )}
+                        <div className="flex-1 min-w-0"><div className="flex justify-between items-baseline"><label className="text-sm font-medium text-gray-700 dark:text-gray-200 truncate pr-2">{sub.name}</label>{(sub.recurringAmount || 0) > 0 && ( <span className="text-[10px] font-bold text-blue-500 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full flex items-center gap-1"><RefreshCw size={8}/> Auto</span>)}</div><div className="relative mt-1"><span className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-semibold pl-2">$</span><input type="text" value={displayValue} onChange={(e) => handleSubExpenseChange(sub.id, e.target.value)} placeholder="0" className="w-full bg-transparent border-none p-0 pl-6 text-base font-semibold text-gray-900 dark:text-white placeholder-gray-300 focus:ring-0 focus:outline-none"/></div></div>
+                        {field.id === 'f_investment' && ( <div className="w-24 ml-2 pl-3 border-l border-gray-100 dark:border-gray-700"><div className="flex justify-between items-baseline"><label className="text-[10px] font-bold text-green-600 dark:text-green-400 tracking-wide">USD</label></div><div className="relative mt-1"><span className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-semibold">US$</span><input type="text" value={displayValueUsd} onChange={(e) => handleSubExpenseUsdChange(sub.id, e.target.value)} placeholder="0" className="w-full bg-transparent border-none p-0 pl-7 text-sm font-mono font-medium text-gray-700 dark:text-gray-300 placeholder-gray-300 focus:outline-none"/></div></div>)}
                       </div>
                     )
                   })}
                 </div>
               </div>
             ))}
-
-            {/* Extra Items Section */}
             {field.type !== 'savings' && (
                 <div className="mt-6 pt-4 border-t-2 border-dashed border-gray-200 dark:border-gray-700">
                     <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Extras / Otros</h4>
-                    
-                    <div className="space-y-2 mb-3">
-                        {(extras[field.id] || []).map((extra) => (
-                            <div key={extra.id} className="flex items-center gap-3 bg-white dark:bg-dark-card p-2 rounded-lg border border-gray-100 dark:border-gray-800">
-                                <span className="text-gray-600 dark:text-gray-300 text-sm flex-1 font-medium pl-1">{extra.description}</span>
-                                <span className="font-mono text-gray-800 dark:text-white font-bold text-sm">{formatNumberDisplay(extra.amount)}</span>
-                                <button onClick={() => onDeleteExtra(field.id, extra.id)} className="text-gray-400 hover:text-red-500 p-1 transition-colors"><X size={16}/></button>
-                            </div>
-                        ))}
-                    </div>
-                    
-                    <div className="flex gap-2 bg-white dark:bg-dark-card p-1.5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-                        <input 
-                            placeholder="Descripción..."
-                            value={extraDesc}
-                            onChange={e => setExtraDesc(e.target.value)}
-                            className="flex-1 bg-transparent px-2 py-1 text-sm dark:text-white focus:outline-none"
-                        />
-                        <div className="w-px bg-gray-200 dark:bg-gray-700 mx-1"></div>
-                        <input 
-                            type="text"
-                            placeholder="$ 0"
-                            value={extraAmount}
-                            onChange={e => handleExtraAmountChange(e.target.value)}
-                            className="w-24 bg-transparent px-2 py-1 text-sm dark:text-white font-mono focus:outline-none text-right"
-                        />
-                        <button 
-                            onClick={() => {
-                                const parsedAmount = parseNumberInput(extraAmount);
-                                if(extraDesc && parsedAmount > 0) {
-                                    onAddExtra(field.id, extraDesc, parsedAmount);
-                                    setExtraDesc('');
-                                    setExtraAmount('');
-                                }
-                            }}
-                            className="bg-blue-600 text-white rounded-lg px-3 hover:bg-blue-700 transition-colors"
-                        >
-                            <Plus size={18} />
-                        </button>
-                    </div>
+                    <div className="space-y-2 mb-3">{(extras[field.id] || []).map((extra) => (<div key={extra.id} className="flex items-center gap-3 bg-white dark:bg-dark-card p-2 rounded-lg border border-gray-100 dark:border-gray-800"><span className="text-gray-600 dark:text-gray-300 text-sm flex-1 font-medium pl-1">{extra.description}</span><span className="font-mono text-gray-800 dark:text-white font-bold text-sm">{formatNumberDisplay(extra.amount)}</span><button onClick={() => onDeleteExtra(field.id, extra.id)} className="text-gray-400 hover:text-red-500 p-1 transition-colors"><X size={16}/></button></div>))}</div>
+                    <div className="flex gap-2 bg-white dark:bg-dark-card p-1.5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm"><input placeholder="Descripción..." value={extraDesc} onChange={e => setExtraDesc(e.target.value)} className="flex-1 bg-transparent px-2 py-1 text-sm dark:text-white focus:outline-none"/><div className="w-px bg-gray-200 dark:bg-gray-700 mx-1"></div><input type="text" placeholder="$ 0" value={extraAmount} onChange={e => handleExtraAmountChange(e.target.value)} className="w-24 bg-transparent px-2 py-1 text-sm dark:text-white font-mono focus:outline-none text-right"/><button onClick={() => { const parsedAmount = parseNumberInput(extraAmount); if(extraDesc && parsedAmount > 0) { onAddExtra(field.id, extraDesc, parsedAmount); setExtraDesc(''); setExtraAmount(''); }}} className="bg-blue-600 text-white rounded-lg px-3 hover:bg-blue-700 transition-colors"><Plus size={18} /></button></div>
                 </div>
             )}
          </div>
