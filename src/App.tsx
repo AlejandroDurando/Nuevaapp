@@ -124,6 +124,7 @@ const HomePage = ({ user, appData, onSave, groupId, onOpenGroupModal, onSetupPin
   const [year, setYear] = useState(() => { const s = localStorage.getItem('last_view_year'); return s ? parseInt(s) : new Date().getFullYear(); });
   const [month, setMonth] = useState(() => { const s = localStorage.getItem('last_view_month'); return s ? parseInt(s) : new Date().getMonth(); });
   const [salary, setSalary] = useState('');
+  const [showSalary, setShowSalary] = useState(true); // ESTADO PARA MOSTRAR/OCULTAR
   
   const displayName = user?.displayName || (user?.isAnonymous ? 'Invitado' : 'Usuario');
   const photoURL = user?.photoURL;
@@ -177,7 +178,27 @@ const HomePage = ({ user, appData, onSave, groupId, onOpenGroupModal, onSetupPin
             <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Año</label><select value={year} onChange={(e) => setYear(Number(e.target.value))} className="w-full p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border dark:border-gray-700 dark:text-white">{YEARS.map(y => <option key={y} value={y}>{y}</option>)}</select></div>
             <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mes</label><select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="w-full p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border dark:border-gray-700 dark:text-white">{MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}</select></div>
           </div>
-          <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sueldo Mensual</label><div className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span><input type="text" value={salary} onChange={handleSalaryChange} className="w-full p-3 pl-8 rounded-lg bg-gray-50 dark:bg-gray-800 border dark:border-gray-700 dark:text-white text-lg font-semibold" placeholder="0" required/></div></div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sueldo Mensual</label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+              <input 
+                type={showSalary ? "text" : "password"} 
+                value={salary} 
+                onChange={handleSalaryChange} 
+                className="w-full p-3 pl-8 pr-12 rounded-lg bg-gray-50 dark:bg-gray-800 border dark:border-gray-700 dark:text-white text-lg font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none" 
+                placeholder="0" 
+                required
+              />
+              <button 
+                type="button"
+                onClick={() => setShowSalary(!showSalary)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+              >
+                {showSalary ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+          </div>
           <button type="submit" className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg transform transition hover:scale-[1.02] active:scale-95">Continuar</button>
         </form>
       </div>
@@ -265,9 +286,7 @@ const App: React.FC = () => {
   useEffect(() => {
     if (user) {
       setDataInitialized(false);
-      // LÓGICA CLAVE: Si hay grupo, leemos grupo. Si no, leemos usuario privado.
       const targetId = groupId || user.uid;
-      
       fetchAppData(targetId).then((data) => {
         if (data.fields && data.fields.length > 0) { setAppData(data); } 
         else { setAppData(prev => ({ ...prev, ...data, fields: INITIAL_FIELDS })); }
@@ -292,6 +311,7 @@ const App: React.FC = () => {
   const triggerRain = () => { const id = Date.now(); setLluvias(prev => [...prev, id]); setTimeout(() => setLluvias(prev => prev.filter(x => x !== id)), 5000); };
   useEffect(() => { if (!document.getElementById('money-rain-style')) { const style = document.createElement('style'); style.id = 'money-rain-style'; style.innerHTML = `@keyframes money-rain { 0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; } 100% { transform: translateY(110vh) rotate(360deg); opacity: 0; } } .animate-money-rain { animation: money-rain linear forwards; pointer-events: none; }`; document.head.appendChild(style); } }, []);
 
+  // RENDER
   if (isLocked) return <PinLock mode="unlock" storedPin={localStorage.getItem('app_pin') || ''} onSuccess={handleUnlock} />;
   if (authLoading || (user && !dataInitialized)) return (<div className="min-h-screen flex items-center justify-center bg-gray-900 text-white flex-col gap-4"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div><span className="text-gray-400 text-sm">Cargando finanzas...</span></div>);
   if (!user) return <LoginPage onLogin={() => {}} />;
@@ -300,7 +320,6 @@ const App: React.FC = () => {
     <>
         {mounted && createPortal(<>{lluvias.map(id => (<div key={id} className="fixed inset-0 pointer-events-none z-[99999] overflow-hidden">{Array.from({ length: 60 }).map((_, i) => (<div key={i} className="absolute text-4xl animate-money-rain" style={{ top: `-${Math.random() * 20}vh`, left: `${Math.random() * 100}vw`, animationDelay: `${Math.random() * 2}s`, animationDuration: `${2 + Math.random() * 3}s`, opacity: 0.8 + Math.random() * 0.2 }}>💵</div>))}</div>))}</>, document.body)}
         
-        {/* MODAL FLOTANTE (Ahora solo aparece si tocas el botón) */}
         {showGroupModal && (
             <GroupModal 
                 currentGroupId={groupId} 
@@ -321,7 +340,7 @@ const App: React.FC = () => {
                             appData={appData} 
                             onSave={handleSaveData} 
                             groupId={groupId} 
-                            onChangeGroup={() => setShowGroupModal(true)} // <-- Abre el modal
+                            onChangeGroup={() => setShowGroupModal(true)}
                             onOpenGroupModal={() => setShowGroupModal(true)}
                             onSetupPin={() => {
                                 if (localStorage.getItem('app_pin')) {
