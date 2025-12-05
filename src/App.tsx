@@ -10,9 +10,10 @@ import PinLock from './components/PinLock';
 import { YEARS, MONTHS, INITIAL_FIELDS } from './constants';
 import { fetchAppData, saveAppData, toggleThemeInDb } from './services/storageService';
 import { Field, AppData, MonthlyData } from './types';
+// CORRECCIÓN 3: Importaciones faltantes agregadas
 import { ArrowLeft, Plus, DollarSign, AlertTriangle, PieChart as PieIcon, BarChart as BarIcon, Eye, EyeOff, LogOut, User, UserCircle, Users, Lock, Unlock, X, CheckCircle } from 'lucide-react';
 
-// --- FIREBASE IMPORTS ---
+// --- FIREBASE ---
 import { auth } from './firebase'; 
 import { signInWithPopup, signInAnonymously, GoogleAuthProvider, signOut, onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 
@@ -24,25 +25,57 @@ const DEFAULT_APP_DATA: AppData = {
   months: {}
 };
 
-// --- HELPER FUNCTIONS ---
+// CORRECCIÓN 2: Soporte real para decimales (,87)
 const formatNumberDisplay = (val: string | number): string => {
   if (val === '' || val === undefined || val === null) return '';
-  const stringVal = val.toString().replace(/\./g, '');
-  if (isNaN(Number(stringVal))) return val.toString();
-  return Number(stringVal).toLocaleString('es-AR');
+  
+  // Si es número, formateamos con 2 decimales
+  if (typeof val === 'number') {
+      return val.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  // Si estamos escribiendo (string)
+  // Mantenemos la coma si el usuario la escribe
+  return val;
 };
 
 const parseNumberInput = (val: string): number => {
+  // 1. Quitar puntos de miles
   const clean = val.replace(/\./g, '');
-  return clean === '' ? 0 : parseFloat(clean);
+  // 2. Reemplazar coma decimal por punto para JS
+  const dotDecimal = clean.replace(',', '.');
+  return parseFloat(dotDecimal) || 0;
 };
+
+// Lógica de input controlado para permitir escribir decimales cómodamente
+const handleMoneyInput = (raw: string): string => {
+    // Solo permitimos números y coma
+    if (!/^[0-9.,]*$/.test(raw)) return raw;
+
+    // Si termina en coma, la dejamos para que siga escribiendo
+    if (raw.endsWith(',')) return raw;
+    
+    // Si tiene decimales, formateamos la parte entera y dejamos la decimal
+    const parts = raw.split(',');
+    if (parts.length > 1) {
+        const integerPart = parts[0].replace(/\./g, '');
+        const decimalPart = parts[1].substring(0, 2); // Max 2 decimales
+        return Number(integerPart).toLocaleString('es-AR') + ',' + decimalPart;
+    }
+
+    // Solo enteros
+    const clean = raw.replace(/\./g, '').replace(/,/g, '');
+    if (!clean) return '';
+    return Number(clean).toLocaleString('es-AR');
+};
+
 
 const getMonthDataSafe = (appData: AppData, year: number, month: number): MonthlyData => {
     const key = `${year}-${String(month).padStart(2, '0')}`;
     return appData.months[key] || { salary: 0, expenses: {}, expensesUsd: {}, paidStatus: {}, extras: {} };
 };
 
-// --- COMPONENTE: LOGIN ---
+// --- LOGIN ---
 const LoginPage = ({ onLogin }: { onLogin: () => void }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -75,16 +108,14 @@ const LoginPage = ({ onLogin }: { onLogin: () => void }) => {
   );
 };
 
-// --- MODAL DE GRUPO ---
+// --- MODAL GRUPO ---
 const GroupModal = ({ currentGroupId, onJoin, onLeave, onClose }: { currentGroupId: string | null, onJoin: (id: string) => void, onLeave: () => void, onClose: () => void }) => {
   const [groupName, setGroupName] = useState('');
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanName = groupName.trim().toLowerCase().replace(/\s+/g, '_');
     if (cleanName.length > 2) onJoin(cleanName);
   };
-
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
       <div className="bg-white dark:bg-dark-card w-full max-w-md rounded-2xl shadow-2xl border dark:border-gray-700 flex flex-col animate-in zoom-in-95 duration-200">
@@ -124,8 +155,17 @@ const HomePage = ({ user, appData, onSave, groupId, onOpenGroupModal, onSetupPin
   const [year, setYear] = useState(() => { const s = localStorage.getItem('last_view_year'); return s ? parseInt(s) : new Date().getFullYear(); });
   const [month, setMonth] = useState(() => { const s = localStorage.getItem('last_view_month'); return s ? parseInt(s) : new Date().getMonth(); });
   const [salary, setSalary] = useState('');
-  const [showSalary, setShowSalary] = useState(true); // ESTADO PARA MOSTRAR/OCULTAR
   
+  // CORRECCIÓN 1: Persistencia del Ojo
+  // Si está guardado 'hidden', empezamos oculto (false). Si no, visible (true).
+  const [showSalary, setShowSalary] = useState(() => localStorage.getItem('pref_show_salary') !== 'hidden');
+
+  const toggleShowSalary = () => {
+      const newState = !showSalary;
+      setShowSalary(newState);
+      localStorage.setItem('pref_show_salary', newState ? 'visible' : 'hidden');
+  };
+
   const displayName = user?.displayName || (user?.isAnonymous ? 'Invitado' : 'Usuario');
   const photoURL = user?.photoURL;
   const hasPin = !!localStorage.getItem('app_pin');
@@ -151,8 +191,8 @@ const HomePage = ({ user, appData, onSave, groupId, onOpenGroupModal, onSetupPin
   };
 
   const handleSalaryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/[^0-9]/g, '');
-    setSalary(formatNumberDisplay(raw));
+    // Usamos el nuevo formateador que soporta decimales
+    setSalary(handleMoneyInput(e.target.value));
   };
 
   return (
@@ -192,10 +232,11 @@ const HomePage = ({ user, appData, onSave, groupId, onOpenGroupModal, onSetupPin
               />
               <button 
                 type="button"
-                onClick={() => setShowSalary(!showSalary)}
+                onClick={toggleShowSalary}
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
               >
-                {showSalary ? <EyeOff size={20} /> : <Eye size={20} />}
+                {/* OJO ABIERTO = MOSTRAR / OJO TACHADO = OCULTAR */}
+                {showSalary ? <Eye size={20} /> : <EyeOff size={20} />}
               </button>
             </div>
           </div>
@@ -214,9 +255,18 @@ const BudgetPage = ({ appData, onSave, groupId }: { appData: AppData, onSave: (d
   const month = Number(searchParams.get('month'));
   const monthKey = `${year}-${String(month).padStart(2, '0')}`;
   const monthData = appData.months[monthKey] || { salary: 0, expenses: {}, expensesUsd: {}, paidStatus: {}, extras: {} };
+  
   const [showRecurringModal, setShowRecurringModal] = useState(false);
   const [recurringItems, setRecurringItems] = useState<any[]>([]);
-  const [showBalance, setShowBalance] = useState(true);
+  
+  // CORRECCIÓN 1: Persistencia del Ojo en el Balance
+  const [showBalance, setShowBalance] = useState(() => localStorage.getItem('pref_show_balance') !== 'hidden');
+  const toggleShowBalance = () => {
+      const newState = !showBalance;
+      setShowBalance(newState);
+      localStorage.setItem('pref_show_balance', newState ? 'visible' : 'hidden');
+  };
+
   const [activeChart, setActiveChart] = useState<'none' | 'pie' | 'bar'>('none');
   const [newFieldId, setNewFieldId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -229,7 +279,7 @@ const BudgetPage = ({ appData, onSave, groupId }: { appData: AppData, onSave: (d
       if (foundRecurring.length > 0) { setRecurringItems(foundRecurring); setShowRecurringModal(true); } 
       else { const newData = { ...appData, months: { ...appData.months, [monthKey]: { ...monthData, recurringApplied: true } } }; onSave(newData); }
     }
-  }, [monthKey]); 
+  }, [monthKey]);
 
   const updateMonth = (updates: Partial<MonthlyData>) => { const newData = { ...appData, months: { ...appData.months, [monthKey]: { ...monthData, ...updates } } }; onSave(newData); };
   const handleUpdateExpense = (subId: string, val: number) => { updateMonth({ expenses: { ...monthData.expenses, [subId]: val } }); };
@@ -252,7 +302,9 @@ const BudgetPage = ({ appData, onSave, groupId }: { appData: AppData, onSave: (d
       <div className="bg-gradient-to-br from-gray-800 to-gray-900 dark:from-gray-800 dark:to-black rounded-2xl p-6 text-white shadow-xl mb-6 relative overflow-hidden">
          <div className="absolute top-0 right-0 p-4 opacity-10"><DollarSign size={120} /></div>
          <div className="relative z-10">
-             <div className="flex items-center justify-between mb-4"><div className="flex items-center gap-2"><button onClick={() => navigate('/')} className="text-gray-300 hover:text-white"><ArrowLeft size={24} /></button><h2 className="text-2xl font-bold">{MONTHS[month - 1]} {year}</h2></div><button onClick={() => setShowBalance(!showBalance)} className="p-2 text-gray-300 hover:text-white hover:bg-white/10 rounded-full transition-colors">{showBalance ? <Eye size={20} /> : <EyeOff size={20} />}</button></div>
+             <div className="flex items-center justify-between mb-4"><div className="flex items-center gap-2"><button onClick={() => navigate('/')} className="text-gray-300 hover:text-white"><ArrowLeft size={24} /></button><h2 className="text-2xl font-bold">{MONTHS[month - 1]} {year}</h2></div>
+             <button onClick={toggleShowBalance} className="p-2 text-gray-300 hover:text-white hover:bg-white/10 rounded-full transition-colors">{showBalance ? <Eye size={20} /> : <EyeOff size={20} />}</button>
+             </div>
              <div className="grid grid-cols-2 gap-4 mb-6"><div className="bg-white/10 rounded-xl p-4 backdrop-blur-sm"><div className="text-xs text-blue-300 uppercase font-bold mb-1">Ingresos</div><div className="text-xl font-mono font-bold">{showBalance ? `$${formatNumberDisplay(monthData.salary)}` : '****'}</div></div><div className="bg-white/10 rounded-xl p-4 backdrop-blur-sm"><div className="text-xs text-purple-300 uppercase font-bold mb-1">Gastos</div><div className="text-xl font-mono font-bold">${formatNumberDisplay(totalExpenses)}</div></div></div>
              <div className="flex justify-between items-end"><div className="text-center"><div className="text-sm text-gray-400 uppercase mb-1">Disponible Global</div><div className={`text-3xl font-bold font-mono ${available < 0 ? 'text-red-400' : 'text-green-400'}`}>{showBalance ? `$${formatNumberDisplay(available)}` : '****'}</div></div><div className={`text-xs px-2 py-1 rounded ${totalAllocatedPercentage > 100 ? 'bg-red-500 text-white' : 'bg-green-900/50 text-green-400'}`}>Asignado: {totalAllocatedPercentage}%</div></div>
          </div>
@@ -311,7 +363,6 @@ const App: React.FC = () => {
   const triggerRain = () => { const id = Date.now(); setLluvias(prev => [...prev, id]); setTimeout(() => setLluvias(prev => prev.filter(x => x !== id)), 5000); };
   useEffect(() => { if (!document.getElementById('money-rain-style')) { const style = document.createElement('style'); style.id = 'money-rain-style'; style.innerHTML = `@keyframes money-rain { 0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; } 100% { transform: translateY(110vh) rotate(360deg); opacity: 0; } } .animate-money-rain { animation: money-rain linear forwards; pointer-events: none; }`; document.head.appendChild(style); } }, []);
 
-  // RENDER
   if (isLocked) return <PinLock mode="unlock" storedPin={localStorage.getItem('app_pin') || ''} onSuccess={handleUnlock} />;
   if (authLoading || (user && !dataInitialized)) return (<div className="min-h-screen flex items-center justify-center bg-gray-900 text-white flex-col gap-4"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div><span className="text-gray-400 text-sm">Cargando finanzas...</span></div>);
   if (!user) return <LoginPage onLogin={() => {}} />;
@@ -321,12 +372,13 @@ const App: React.FC = () => {
         {mounted && createPortal(<>{lluvias.map(id => (<div key={id} className="fixed inset-0 pointer-events-none z-[99999] overflow-hidden">{Array.from({ length: 60 }).map((_, i) => (<div key={i} className="absolute text-4xl animate-money-rain" style={{ top: `-${Math.random() * 20}vh`, left: `${Math.random() * 100}vw`, animationDelay: `${Math.random() * 2}s`, animationDuration: `${2 + Math.random() * 3}s`, opacity: 0.8 + Math.random() * 0.2 }}>💵</div>))}</div>))}</>, document.body)}
         
         {showGroupModal && (
-            <GroupModal 
-                currentGroupId={groupId} 
-                onJoin={handleJoinGroup} 
-                onLeave={handleLeaveGroup} 
-                onClose={() => setShowGroupModal(false)} 
-            />
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                <div className="bg-white dark:bg-dark-card w-full max-w-md rounded-2xl p-6 shadow-xl border dark:border-gray-700 relative animate-in zoom-in-95 duration-200">
+                    <button onClick={() => setShowGroupModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-red-500"><X/></button>
+                    <GroupSelector onJoinGroup={handleJoinGroup} user={user} />
+                    {groupId && <div className="mt-6 text-center pt-4 border-t dark:border-gray-700"><button onClick={handleLeaveGroup} className="text-red-500 font-bold hover:underline">Salir del Grupo (Volver a Personal)</button></div>}
+                </div>
+            </div>
         )}
         
         {showPinSetup && <PinLock mode="setup" onSuccess={handleSetPin} onCancel={() => setShowPinSetup(false)} />}
