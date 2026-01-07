@@ -22,7 +22,7 @@ interface FieldAccordionProps {
   totalAllocatedPercentage?: number;
 }
 
-// --- HELPERS CON SOPORTE DECIMAL ---
+// --- HELPERS ---
 const formatNumberDisplay = (val: number | undefined): string => {
   if (val === undefined || val === null || val === 0) return '';
   return val.toLocaleString('es-AR', { maximumFractionDigits: 2 });
@@ -46,6 +46,8 @@ const FieldAccordion: React.FC<FieldAccordionProps> = ({
   const [extraDesc, setExtraDesc] = useState('');
   const [extraAmount, setExtraAmount] = useState('');
 
+  const [localInputs, setLocalInputs] = useState<Record<string, string>>({});
+
   useEffect(() => {
     if (defaultEditing) {
       setIsOpen(true);
@@ -63,13 +65,11 @@ const FieldAccordion: React.FC<FieldAccordionProps> = ({
   const remaining = budget - totalSpent;
   const percentUsed = budget > 0 ? (totalSpent / budget) * 100 : 0;
   
-  // Validación
   const otherFieldsTotal = totalAllocatedPercentage - field.percentage;
   const projectedTotal = otherFieldsTotal + editedField.percentage;
   const isOverLimit = projectedTotal > 100;
   const availableSpace = 100 - otherFieldsTotal;
 
-  // Colores
   let progressBarColor = 'bg-blue-500';
   let statusColor = 'text-gray-500 dark:text-gray-400';
   let alertIcon = null;
@@ -91,7 +91,6 @@ const FieldAccordion: React.FC<FieldAccordionProps> = ({
   let remainingColor = remaining < 0 ? 'text-red-500' : 'text-green-500';
   const IconComponent = ICON_MAP[field.icon] || Lucide.HelpCircle;
 
-  // Handlers
   const handleSave = () => { 
       if (!isOverLimit) {
           onSaveField(editedField); 
@@ -100,7 +99,6 @@ const FieldAccordion: React.FC<FieldAccordionProps> = ({
   };
   const handleCancel = () => { setEditedField(JSON.parse(JSON.stringify(field))); setIsEditing(false); };
   
-  // --- LOGICA DE REORDENAMIENTO INTERNO (Categorías) ---
   const handleMoveCategory = (idx: number, direction: 'up' | 'down') => {
       const newCats = [...editedField.categories];
       if (direction === 'up' && idx > 0) {
@@ -111,11 +109,9 @@ const FieldAccordion: React.FC<FieldAccordionProps> = ({
       setEditedField({ ...editedField, categories: newCats });
   };
 
-  // --- LOGICA DE REORDENAMIENTO INTERNO (Subcategorías) ---
   const handleMoveSub = (catIdx: number, subIdx: number, direction: 'up' | 'down') => {
       const newCats = [...editedField.categories];
       const subs = [...newCats[catIdx].subcategories];
-      
       if (direction === 'up' && subIdx > 0) {
           [subs[subIdx], subs[subIdx - 1]] = [subs[subIdx - 1], subs[subIdx]];
       } else if (direction === 'down' && subIdx < subs.length - 1) {
@@ -142,80 +138,46 @@ const FieldAccordion: React.FC<FieldAccordionProps> = ({
     setEditedField({ ...editedField, categories: newCats });
   };
 
-  const handleSubExpenseChange = (subId: string, val: string) => onUpdateExpense(subId, parseNumberInput(val));
-  const handleSubExpenseUsdChange = (subId: string, val: string) => onUpdateExpenseUsd(subId, parseNumberInput(val));
-  const handleExtraAmountChange = (val: string) => setExtraAmount(val === '' ? '' : formatNumberDisplay(parseNumberInput(val)));
+  const handleInputChange = (id: string, value: string, isUsd: boolean = false) => {
+      const clean = value.replace(/[^0-9,]/g, '');
+      setLocalInputs(prev => ({ ...prev, [isUsd ? `usd_${id}` : id]: clean }));
+      const num = parseNumberInput(clean);
+      if (isUsd) onUpdateExpenseUsd(id, num);
+      else onUpdateExpense(id, num);
+  };
 
+  const handleBlur = (id: string, isUsd: boolean = false) => {
+      setLocalInputs(prev => {
+          const newState = { ...prev };
+          delete newState[isUsd ? `usd_${id}` : id];
+          return newState;
+      });
+  };
+
+  const handleExtraAmountChange = (val: string) => setExtraAmount(val.replace(/[^0-9,]/g, ''));
+
+  // --- MODO EDICIÓN ---
   if (isEditing) {
     return (
       <div className={`bg-white dark:bg-dark-card rounded-2xl shadow-xl p-6 border-2 relative mt-4 mb-4 animate-in fade-in zoom-in duration-200 ${isOverLimit ? 'border-red-500' : 'border-blue-500'}`}>
+        {/* ENCABEZADO SIN BOTONES */}
         <div className="flex justify-between items-center mb-6 pb-2 border-b border-gray-100 dark:border-gray-700">
           <h3 className="text-lg font-bold dark:text-white flex items-center gap-2"><Pencil size={18} /> Editando Campo</h3>
-          <div className="flex gap-2">
-            <button onClick={handleCancel} className="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 rounded-lg text-sm font-medium hover:bg-gray-300 transition">Cancelar</button>
-            <button 
-                onClick={handleSave} 
-                disabled={isOverLimit}
-                className={`px-3 py-1.5 text-white rounded-lg text-sm font-bold shadow-md transition flex items-center gap-1 ${isOverLimit ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
-            >
-                <Save size={16}/> Guardar
-            </button>
-          </div>
         </div>
 
-        {isOverLimit && (
-            <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg text-sm font-bold flex items-center gap-2">
-                <AlertTriangle size={18}/>
-                ¡Error! El total supera el 100% ({projectedTotal}%). Máximo disponible: {availableSpace}%
-            </div>
-        )}
+        {isOverLimit && (<div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg text-sm font-bold flex items-center gap-2"><AlertTriangle size={18}/> ¡Error! El total supera el 100% ({projectedTotal}%). Máximo disponible: {availableSpace}%</div>)}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div className="space-y-4">
-                <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nombre</label>
-                    <input type="text" value={editedField.name} onChange={e => setEditedField({...editedField, name: e.target.value})} className="w-full p-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 dark:text-white"/>
-                </div>
-                
-                <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Porcentaje %</label>
-                    <input 
-                        type="number" 
-                        value={editedField.percentage === 0 ? '' : editedField.percentage} 
-                        onChange={e => setEditedField({...editedField, percentage: Number(e.target.value)})} 
-                        placeholder="0"
-                        className={`w-full p-2 rounded-lg bg-gray-50 dark:bg-gray-800 border dark:text-white ${isOverLimit ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200 dark:border-gray-600'}`}
-                    />
-                    <div className="text-xs text-gray-400 mt-1">Disponible para asignar: {availableSpace}%</div>
-                </div>
+                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nombre</label><input type="text" value={editedField.name} onChange={e => setEditedField({...editedField, name: e.target.value})} className="w-full p-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 dark:text-white"/></div>
+                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Porcentaje %</label><input type="number" value={editedField.percentage === 0 ? '' : editedField.percentage} onChange={e => setEditedField({...editedField, percentage: Number(e.target.value)})} placeholder="0" className={`w-full p-2 rounded-lg bg-gray-50 dark:bg-gray-800 border dark:text-white ${isOverLimit ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200 dark:border-gray-600'}`}/><div className="text-xs text-gray-400 mt-1">Disponible para asignar: {availableSpace}%</div></div>
             </div>
-
             <div className="space-y-4">
-                <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Color</label>
-                    <div className="flex flex-wrap gap-2">
-                        {COLORS.map(c => (
-                            <button key={c} onClick={() => setEditedField({...editedField, color: c})} className={`w-6 h-6 rounded-full bg-${c}-500 ${editedField.color === c ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : 'opacity-60 hover:opacity-100'}`} />
-                        ))}
-                    </div>
-                </div>
-                <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Icono</label>
-                    <div className="flex flex-wrap gap-2 h-20 overflow-y-auto p-2 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                        {Object.keys(ICON_MAP).map(key => {
-                            const Ico = ICON_MAP[key];
-                            return (
-                                <button key={key} onClick={() => setEditedField({...editedField, icon: key})} className={`p-1.5 rounded ${editedField.icon === key ? 'bg-blue-100 dark:bg-blue-900 text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}>
-                                    <Ico size={18} />
-                                </button>
-                            )
-                        })}
-                    </div>
-                </div>
+                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Color</label><div className="flex flex-wrap gap-2">{COLORS.map(c => (<button key={c} onClick={() => setEditedField({...editedField, color: c})} className={`w-6 h-6 rounded-full bg-${c}-500 ${editedField.color === c ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : 'opacity-60 hover:opacity-100'}`} />))}</div></div>
+                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Icono</label><div className="flex flex-wrap gap-2 h-20 overflow-y-auto p-2 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">{Object.keys(ICON_MAP).map(key => { const Ico = ICON_MAP[key]; return (<button key={key} onClick={() => setEditedField({...editedField, icon: key})} className={`p-1.5 rounded ${editedField.icon === key ? 'bg-blue-100 dark:bg-blue-900 text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}><Ico size={18} /></button>)})}</div></div>
             </div>
         </div>
 
-        {/* Categorías */}
         <div className="space-y-4 border-t border-gray-100 dark:border-gray-700 pt-4">
           <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Estructura</label>
           {editedField.categories.map((cat, catIdx) => (
@@ -247,11 +209,23 @@ const FieldAccordion: React.FC<FieldAccordionProps> = ({
           ))}
           <button onClick={handleAddCategory} className="w-full py-2 border-2 border-dashed border-gray-300 dark:border-gray-700 text-gray-500 rounded hover:border-blue-500 hover:text-blue-500 transition-colors">+ Añadir Categoría</button>
         </div>
+
+        {/* --- BOTONES DE ACCIÓN (ABAJO) --- */}
+        <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100 dark:border-gray-700">
+            <button onClick={handleCancel} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-xl text-sm font-bold hover:bg-gray-300 transition text-gray-700 dark:text-gray-200">Cancelar</button>
+            <button 
+                onClick={handleSave} 
+                disabled={isOverLimit}
+                className={`px-6 py-2 text-white rounded-xl text-sm font-bold shadow-lg transition flex items-center gap-2 ${isOverLimit ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 hover:scale-105'}`}
+            >
+                <Save size={18}/> Guardar Cambios
+            </button>
+        </div>
       </div>
     );
   }
 
-  // Vista Normal
+  // --- VISTA NORMAL ---
   return (
     <div className={`relative bg-white dark:bg-dark-card rounded-2xl transition-all duration-300 ${percentUsed >= 100 && field.type !== 'savings' ? 'border-l-4 border-l-red-500' : ''} shadow-sm border-b-4 border-b-gray-200 dark:border-b-gray-900 border-t border-r border-l border-gray-100 dark:border-gray-800`}>
       <div className="p-5">
@@ -265,7 +239,6 @@ const FieldAccordion: React.FC<FieldAccordionProps> = ({
                <button onClick={() => setMenuOpen(!menuOpen)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"><MoreVertical size={20} /></button>
             {menuOpen && (
               <div className="absolute right-0 top-10 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-2xl z-20 border border-gray-100 dark:border-gray-700 overflow-hidden ring-1 ring-black/5">
-                {/* SIN CONTROLES DE SUBIR/BAJAR CAMPO */}
                 <button onClick={() => { setIsEditing(true); setMenuOpen(false); setIsOpen(true); }} className="block w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm dark:text-white transition-colors border-b border-gray-100 dark:border-gray-700"><div className="flex items-center gap-2"><Pencil size={16} className="text-blue-500"/> Editar Campo</div></button>
                 <button onClick={() => onDeleteField(field.id)} className="block w-full text-left px-4 py-3 hover:bg-red-50 dark:hover:bg-red-900/20 text-sm text-red-500 transition-colors"><div className="flex items-center gap-2"><Trash2 size={16}/> Eliminar</div></button>
               </div>
@@ -276,7 +249,7 @@ const FieldAccordion: React.FC<FieldAccordionProps> = ({
         {field.type === 'savings' && ( <div className="mt-4 flex justify-between text-sm font-semibold p-3 bg-green-50 dark:bg-green-900/10 rounded-lg border border-green-100 dark:border-green-900/30"><span className="text-green-600 dark:text-green-400">Acumulado Total</span><span className="text-green-700 dark:text-green-300 font-mono text-lg">{formatNumberDisplay(totalSpent)}</span></div>)}
       </div>
 
-      <div className={`transition-all duration-300 ease-in-out ${isOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+      <div className={`transition-all duration-500 ease-in-out overflow-hidden ${isOpen ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0'}`}>
          <div className="p-5 bg-gray-50/80 dark:bg-black/20 border-t border-gray-100 dark:border-gray-800 rounded-b-2xl">
             {field.categories.map(cat => (
               <div key={cat.id} className="mb-6 last:mb-0">
@@ -284,13 +257,13 @@ const FieldAccordion: React.FC<FieldAccordionProps> = ({
                 <div className="space-y-3">
                   {cat.subcategories.map(sub => {
                      const isPaid = paidStatus[sub.id] || false;
-                     const displayValue = expenses[sub.id] ? formatNumberDisplay(expenses[sub.id]) : '';
-                     const displayValueUsd = expensesUsd[sub.id] ? formatNumberDisplay(expensesUsd[sub.id]) : '';
+                     const displayValue = localInputs[sub.id] !== undefined ? localInputs[sub.id] : (expenses[sub.id] ? formatNumberDisplay(expenses[sub.id]) : '');
+                     const displayValueUsd = localInputs[`usd_${sub.id}`] !== undefined ? localInputs[`usd_${sub.id}`] : (expensesUsd[sub.id] ? formatNumberDisplay(expensesUsd[sub.id]) : '');
                      return (
                       <div key={sub.id} className="group bg-white dark:bg-dark-card rounded-xl p-3 shadow-sm border border-gray-100 dark:border-gray-800 flex items-center gap-3 transition-shadow hover:shadow-md">
                         <button onClick={() => onTogglePaid(sub.id, !isPaid)} className={`w-8 h-8 rounded-lg flex items-center justify-center border-2 transition-all ${isPaid ? 'bg-green-500 border-green-500 text-white shadow-green-500/30 shadow-lg scale-105' : 'border-gray-300 dark:border-gray-600 text-transparent hover:border-blue-400'}`}><Check size={16} strokeWidth={3} /></button>
-                        <div className="flex-1 min-w-0"><div className="flex justify-between items-baseline"><label className="text-sm font-medium text-gray-700 dark:text-gray-200 truncate pr-2">{sub.name}</label>{(sub.recurringAmount || 0) > 0 && ( <span className="text-[10px] font-bold text-blue-500 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full flex items-center gap-1"><RefreshCw size={8}/> Auto</span>)}</div><div className="relative mt-1"><span className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-semibold pl-2">$</span><input type="text" value={displayValue} onChange={(e) => handleSubExpenseChange(sub.id, e.target.value)} placeholder="0" className="w-full bg-transparent border-none p-0 pl-6 text-base font-semibold text-gray-900 dark:text-white placeholder-gray-300 focus:ring-0 focus:outline-none"/></div></div>
-                        {field.id === 'f_investment' && ( <div className="w-24 ml-2 pl-3 border-l border-gray-100 dark:border-gray-700"><div className="flex justify-between items-baseline"><label className="text-[10px] font-bold text-green-600 dark:text-green-400 tracking-wide">USD</label></div><div className="relative mt-1"><span className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-semibold">US$</span><input type="text" value={displayValueUsd} onChange={(e) => handleSubExpenseUsdChange(sub.id, e.target.value)} placeholder="0" className="w-full bg-transparent border-none p-0 pl-7 text-sm font-mono font-medium text-gray-700 dark:text-gray-300 placeholder-gray-300 focus:outline-none"/></div></div>)}
+                        <div className="flex-1 min-w-0"><div className="flex justify-between items-baseline"><label className="text-sm font-medium text-gray-700 dark:text-gray-200 truncate pr-2">{sub.name}</label>{(sub.recurringAmount || 0) > 0 && ( <span className="text-[10px] font-bold text-blue-500 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full flex items-center gap-1"><RefreshCw size={8}/> Auto</span>)}</div><div className="relative mt-1"><span className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-semibold pl-2">$</span><input type="text" value={displayValue} onChange={(e) => handleInputChange(sub.id, e.target.value)} onBlur={() => handleBlur(sub.id)} placeholder="0" className="w-full bg-transparent border-none p-0 pl-6 text-base font-semibold text-gray-900 dark:text-white placeholder-gray-300 focus:ring-0 focus:outline-none"/></div></div>
+                        {field.id === 'f_investment' && ( <div className="w-24 ml-2 pl-3 border-l border-gray-100 dark:border-gray-700"><div className="flex justify-between items-baseline"><label className="text-[10px] font-bold text-green-600 dark:text-green-400 tracking-wide">USD</label></div><div className="relative mt-1"><span className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-semibold">US$</span><input type="text" value={displayValueUsd} onChange={(e) => handleInputChange(sub.id, e.target.value, true)} onBlur={() => handleBlur(sub.id, true)} placeholder="0" className="w-full bg-transparent border-none p-0 pl-7 text-sm font-mono font-medium text-gray-700 dark:text-gray-300 placeholder-gray-300 focus:outline-none"/></div></div>)}
                       </div>
                     )
                   })}
