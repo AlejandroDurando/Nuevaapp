@@ -156,11 +156,9 @@ const FieldAccordion: React.FC<FieldAccordionProps> = ({
 
   const handleExtraAmountChange = (val: string) => setExtraAmount(val.replace(/[^0-9,]/g, ''));
 
-  // --- MODO EDICIÓN ---
   if (isEditing) {
     return (
       <div className={`bg-white dark:bg-dark-card rounded-2xl shadow-xl p-6 border-2 relative mt-4 mb-4 animate-in fade-in zoom-in duration-200 ${isOverLimit ? 'border-red-500' : 'border-blue-500'}`}>
-        {/* ENCABEZADO SIN BOTONES */}
         <div className="flex justify-between items-center mb-6 pb-2 border-b border-gray-100 dark:border-gray-700">
           <h3 className="text-lg font-bold dark:text-white flex items-center gap-2"><Pencil size={18} /> Editando Campo</h3>
         </div>
@@ -210,16 +208,9 @@ const FieldAccordion: React.FC<FieldAccordionProps> = ({
           <button onClick={handleAddCategory} className="w-full py-2 border-2 border-dashed border-gray-300 dark:border-gray-700 text-gray-500 rounded hover:border-blue-500 hover:text-blue-500 transition-colors">+ Añadir Categoría</button>
         </div>
 
-        {/* --- BOTONES DE ACCIÓN (ABAJO) --- */}
         <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100 dark:border-gray-700">
             <button onClick={handleCancel} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-xl text-sm font-bold hover:bg-gray-300 transition text-gray-700 dark:text-gray-200">Cancelar</button>
-            <button 
-                onClick={handleSave} 
-                disabled={isOverLimit}
-                className={`px-6 py-2 text-white rounded-xl text-sm font-bold shadow-lg transition flex items-center gap-2 ${isOverLimit ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 hover:scale-105'}`}
-            >
-                <Save size={18}/> Guardar Cambios
-            </button>
+            <button onClick={handleSave} disabled={isOverLimit} className={`px-6 py-2 text-white rounded-xl text-sm font-bold shadow-lg transition flex items-center gap-2 ${isOverLimit ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 hover:scale-105'}`}><Save size={18}/> Guardar Cambios</button>
         </div>
       </div>
     );
@@ -273,8 +264,13 @@ const FieldAccordion: React.FC<FieldAccordionProps> = ({
             {field.type !== 'savings' && (
                 <div className="mt-6 pt-4 border-t-2 border-dashed border-gray-200 dark:border-gray-700">
                     <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Extras / Otros</h4>
-                    <div className="space-y-2 mb-3">{(extras[field.id] || []).map((extra) => (<div key={extra.id} className="flex items-center gap-3 bg-white dark:bg-dark-card p-2 rounded-lg border border-gray-100 dark:border-gray-800"><span className="text-gray-600 dark:text-gray-300 text-sm flex-1 font-medium pl-1">{extra.description}</span><span className="font-mono text-gray-800 dark:text-white font-bold text-sm">{formatNumberDisplay(extra.amount)}</span><button onClick={() => onDeleteExtra(field.id, extra.id)} className="text-gray-400 hover:text-red-500 p-1 transition-colors"><X size={16}/></button></div>))}</div>
-                    <div className="flex gap-2 bg-white dark:bg-dark-card p-1.5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm"><input placeholder="Descripción..." value={extraDesc} onChange={e => setExtraDesc(e.target.value)} className="flex-1 bg-transparent px-2 py-1 text-sm dark:text-white focus:outline-none"/><div className="w-px bg-gray-200 dark:bg-gray-700 mx-1"></div><input type="text" placeholder="$ 0" value={extraAmount} onChange={e => handleExtraAmountChange(e.target.value)} className="w-24 bg-transparent px-2 py-1 text-sm dark:text-white font-mono focus:outline-none text-right"/><button onClick={() => { const parsedAmount = parseNumberInput(extraAmount); if(extraDesc && parsedAmount > 0) { onAddExtra(field.id, extraDesc, parsedAmount); setExtraDesc(''); setExtraAmount(''); }}} className="bg-blue-600 text-white rounded-lg px-3 hover:bg-blue-700 transition-colors"><Plus size={18} /></button></div>
+                    <div className="space-y-2 mb-3">{(extras[field.id] || []).map((extra) => (<div key={extra.id} className="flex items-center gap-3 bg-white dark:bg-dark-card p-2 rounded-lg border border-gray-100 dark:border-gray-800"><span className="text-gray-600 dark:text-gray-300 text-sm flex-1 font-medium pl-1 break-all">{extra.description}</span><span className="font-mono text-gray-800 dark:text-white font-bold text-sm">{formatNumberDisplay(extra.amount)}</span><button onClick={() => onDeleteExtra(field.id, extra.id)} className="text-gray-400 hover:text-red-500 p-1 transition-colors"><X size={16}/></button></div>))}</div>
+                    <div className="flex gap-2 bg-white dark:bg-dark-card p-1.5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                        {/* AQUI ESTA LA CORRECCION: min-w-0 */}
+                        <input placeholder="Descripción..." value={extraDesc} onChange={e => setExtraDesc(e.target.value)} className="flex-1 min-w-0 bg-transparent px-2 py-1 text-sm dark:text-white focus:outline-none"/>
+                        <div className="w-px bg-gray-200 dark:bg-gray-700 mx-1"></div>
+                        <input type="text" placeholder="$ 0" value={extraAmount} onChange={e => handleExtraAmountChange(e.target.value)} className="w-24 bg-transparent px-2 py-1 text-sm dark:text-white font-mono focus:outline-none text-right"/>
+                        <button onClick={() => { const parsedAmount = parseNumberInput(extraAmount); if(extraDesc && parsedAmount > 0) { onAddExtra(field.id, extraDesc, parsedAmount); setExtraDesc(''); setExtraAmount(''); }}} className="bg-blue-600 text-white rounded-lg px-3 hover:bg-blue-700 transition-colors"><Plus size={18} /></button></div>
                 </div>
             )}
          </div>
