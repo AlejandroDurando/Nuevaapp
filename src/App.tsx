@@ -11,8 +11,6 @@ import { YEARS, MONTHS, INITIAL_FIELDS } from './constants';
 import { fetchAppData, saveAppData } from './services/storageService';
 import { Field, AppData, MonthlyData } from './types';
 import { ArrowLeft, Plus, DollarSign, AlertTriangle, PieChart as PieIcon, BarChart as BarIcon, Eye, EyeOff, LogOut, User, UserCircle, Users, Lock, Unlock, X, CheckCircle } from 'lucide-react';
-
-// --- FIREBASE ---
 import { auth } from './firebase'; 
 import { signInWithPopup, signInAnonymously, GoogleAuthProvider, signOut, onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 
@@ -53,21 +51,39 @@ const handleMoneyInput = (raw: string): string => {
     return Number(clean).toLocaleString('es-AR');
 };
 
+// --- LÓGICA DE DATOS: CORREGIDA PARA "AMNESIA TOTAL" ---
 const getMonthDataSafe = (appData: AppData, year: number, month: number): MonthlyData => {
-    const key = `${year}-${String(month).padStart(2, '0')}`;
-    return appData.months[key] || { salary: 0, expenses: {}, expensesUsd: {}, paidStatus: {}, extras: {} };
+    const currentKey = `${year}-${String(month).padStart(2, '0')}`;
+    const currentMonth = appData.months[currentKey];
+
+    // 1. Si el mes ya existe y tiene datos, USARLOS (Independencia total)
+    if (currentMonth && currentMonth.fields && currentMonth.fields.length > 0) {
+        return currentMonth;
+    }
+
+    // 2. Si es un mes NUEVO, SIEMPRE usar los valores por defecto (70/20/10)
+    // Ya NO miramos el mes anterior ni la configuración global modificada.
+    // Usamos INITIAL_FIELDS directo para garantizar que nazca "limpio".
+    const freshStartFields = JSON.parse(JSON.stringify(INITIAL_FIELDS));
+
+    return { 
+        salary: 0, 
+        expenses: {}, 
+        expensesUsd: {}, 
+        paidStatus: {}, 
+        extras: {},
+        ...currentMonth, // Mantiene gastos si ya existían
+        fields: freshStartFields 
+    };
 };
 
-// --- COMPONENTE GROUP SELECTOR ---
 const GroupSelector = ({ onJoinGroup, user }: { onJoinGroup: (id: string) => void, user: any }) => {
   const [groupName, setGroupName] = useState('');
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanName = groupName.trim().toLowerCase().replace(/\s+/g, '_');
     if (cleanName.length > 2) onJoinGroup(cleanName);
   };
-
   return (
     <div>
        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Ingresa un nombre único (ej: <b>pareja_2025</b>) para compartir gastos.</p>
@@ -79,23 +95,19 @@ const GroupSelector = ({ onJoinGroup, user }: { onJoinGroup: (id: string) => voi
   );
 };
 
-// --- PAGINA LOGIN ---
 const LoginPage = ({ onLogin }: { onLogin: () => void }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
   const handleGoogleLogin = async () => {
     setLoading(true); setError('');
     try { await signInWithPopup(auth, googleProvider); } 
     catch (err: any) { console.error(err); setError('Error al iniciar con Google.'); setLoading(false); }
   };
-
   const handleGuestLogin = async () => {
     setLoading(true); setError('');
     try { await signInAnonymously(auth); } 
     catch (err: any) { console.error(err); setError('Error al iniciar como invitado.'); setLoading(false); }
   };
-
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 p-4 transition-colors">
       <div className="w-full max-w-md bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 text-center">
@@ -112,16 +124,13 @@ const LoginPage = ({ onLogin }: { onLogin: () => void }) => {
   );
 };
 
-// --- PAGINA HOME ---
 const HomePage = ({ user, appData, onSave, groupId, onOpenGroupModal, onSetupPin, onChangeGroup }: { user: FirebaseUser | null, appData: AppData, onSave: (data: AppData) => void, groupId: string | null, onOpenGroupModal: () => void, onSetupPin: () => void, onChangeGroup: () => void }) => {
   const navigate = useNavigate();
   const [year, setYear] = useState(() => { const s = localStorage.getItem('last_view_year'); return s ? parseInt(s) : new Date().getFullYear(); });
   const [month, setMonth] = useState(() => { const s = localStorage.getItem('last_view_month'); return s ? parseInt(s) : new Date().getMonth(); });
   const [salary, setSalary] = useState('');
-  
   const [showSalary, setShowSalary] = useState(() => localStorage.getItem('pref_show_salary') !== 'hidden');
   const toggleShowSalary = () => { const newState = !showSalary; setShowSalary(newState); localStorage.setItem('pref_show_salary', newState ? 'visible' : 'hidden'); };
-
   const displayName = user?.displayName || (user?.isAnonymous ? 'Invitado' : 'Usuario');
   const photoURL = user?.photoURL;
   const hasPin = !!localStorage.getItem('app_pin');
@@ -139,13 +148,19 @@ const HomePage = ({ user, appData, onSave, groupId, onOpenGroupModal, onSetupPin
     const salaryNum = parseNumberInput(salary);
     if (salaryNum > 0) {
       const key = `${year}-${String(month + 1).padStart(2, '0')}`;
-      const currentMonth = appData.months[key] || { salary: 0, expenses: {}, expensesUsd: {}, paidStatus: {}, extras: {} };
-      const newData = { ...appData, months: { ...appData.months, [key]: { ...currentMonth, salary: salaryNum } } };
+      const currentMonthData = getMonthDataSafe(appData, year, month + 1);
+      
+      const newData = { 
+          ...appData, 
+          months: { 
+              ...appData.months, 
+              [key]: { ...currentMonthData, salary: salaryNum } 
+          } 
+      };
       onSave(newData);
       navigate(`/budget?year=${year}&month=${month + 1}`);
     }
   };
-
   const handleSalaryChange = (e: React.ChangeEvent<HTMLInputElement>) => { setSalary(handleMoneyInput(e.target.value)); };
 
   return (
@@ -162,9 +177,7 @@ const HomePage = ({ user, appData, onSave, groupId, onOpenGroupModal, onSetupPin
                 <button onClick={() => signOut(auth)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="Cerrar Sesión"><LogOut size={20} /></button>
             </div>
         </div>
-        
         {groupId && <div className="mb-4 p-2 bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-900 rounded-lg flex items-center justify-center gap-2 text-xs font-bold text-purple-600 dark:text-purple-300"><Users size={14} /> Modo Grupo: {groupId}</div>}
-
         <div className="text-center mb-8"><h2 className="text-2xl font-bold mb-2 text-gray-800 dark:text-white">Configurar Mes</h2><p className="text-gray-500 dark:text-gray-400">Selecciona fecha y sueldo</p></div>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-2 gap-4">
@@ -193,41 +206,65 @@ const BudgetPage = ({ appData, onSave, groupId }: { appData: AppData, onSave: (d
   const year = Number(searchParams.get('year'));
   const month = Number(searchParams.get('month'));
   const monthKey = `${year}-${String(month).padStart(2, '0')}`;
-  const monthData = appData.months[monthKey] || { salary: 0, expenses: {}, expensesUsd: {}, paidStatus: {}, extras: {} };
+  
+  const monthData = getMonthDataSafe(appData, year, month);
   
   const [showRecurringModal, setShowRecurringModal] = useState(false);
   const [recurringItems, setRecurringItems] = useState<any[]>([]);
   const [showBalance, setShowBalance] = useState(() => localStorage.getItem('pref_show_balance') !== 'hidden');
   const toggleShowBalance = () => { const newState = !showBalance; setShowBalance(newState); localStorage.setItem('pref_show_balance', newState ? 'visible' : 'hidden'); };
-
   const [activeChart, setActiveChart] = useState<'none' | 'pie' | 'bar'>('none');
   const [newFieldId, setNewFieldId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { if (newFieldId && bottomRef.current) { setTimeout(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, 150); } }, [newFieldId, appData.fields.length]);
+  useEffect(() => { if (newFieldId && bottomRef.current) { setTimeout(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, 150); } }, [newFieldId, monthData.fields.length]);
+  
   useEffect(() => {
-    if (!monthData.recurringApplied && appData.fields.length > 0) {
+    if (!monthData.recurringApplied && monthData.fields.length > 0) {
       const foundRecurring: any[] = [];
-      appData.fields.forEach(field => { field.categories.forEach(cat => { cat.subcategories.forEach(sub => { if (sub.recurringAmount && sub.recurringAmount > 0) { if (!monthData.expenses[sub.id]) foundRecurring.push({ subId: sub.id, name: sub.name, categoryName: cat.name, fieldName: field.name, amount: sub.recurringAmount }); } }); }); });
+      monthData.fields.forEach(field => { field.categories.forEach(cat => { cat.subcategories.forEach(sub => { if (sub.recurringAmount && sub.recurringAmount > 0) { if (!monthData.expenses[sub.id]) foundRecurring.push({ subId: sub.id, name: sub.name, categoryName: cat.name, fieldName: field.name, amount: sub.recurringAmount }); } }); }); });
       if (foundRecurring.length > 0) { setRecurringItems(foundRecurring); setShowRecurringModal(true); } 
       else { const newData = { ...appData, months: { ...appData.months, [monthKey]: { ...monthData, recurringApplied: true } } }; onSave(newData); }
     }
   }, [monthKey]);
 
   const updateMonth = (updates: Partial<MonthlyData>) => { const newData = { ...appData, months: { ...appData.months, [monthKey]: { ...monthData, ...updates } } }; onSave(newData); };
+  
   const handleUpdateExpense = (subId: string, val: number) => { updateMonth({ expenses: { ...monthData.expenses, [subId]: val } }); };
   const handleUpdateExpenseUsd = (subId: string, val: number) => { updateMonth({ expensesUsd: { ...monthData.expensesUsd || {}, [subId]: val } }); };
   const handleTogglePaid = (subId: string, val: boolean) => { updateMonth({ paidStatus: { ...monthData.paidStatus, [subId]: val } }); };
   const handleAddExtra = (fid: string, d: string, a: number) => { updateMonth({ extras: { ...monthData.extras, [fid]: [...(monthData.extras[fid] || []), { id: `e_${Date.now()}`, description: d, amount: a, fieldId: fid }] } }); };
   const handleDeleteExtra = (fid: string, eid: string) => { updateMonth({ extras: { ...monthData.extras, [fid]: (monthData.extras[fid] || []).filter(e => e.id !== eid) } }); };
-  const handleSaveField = (uF: Field) => { const newFields = appData.fields.map(f => f.id === uF.id ? uF : f); const newData = { ...appData, fields: newFields }; onSave(newData); setNewFieldId(null); };
-  const handleDeleteField = (fid: string) => { if (window.confirm("¿Seguro?")) { const newFields = appData.fields.filter(f => f.id !== fid); const newData = { ...appData, fields: newFields }; onSave(newData); } };
-  const handleAddNewField = () => { const newId = `f_${Date.now()}`; const newField: Field = { id: newId, name: 'Nuevo Campo', percentage: 0, color: 'gray', icon: 'DollarSign', categories: [{ id: `c_${Date.now()}`, name: 'General', subcategories: [] }], type: 'standard', alertThreshold: 80 }; const newData = { ...appData, fields: [...appData.fields, newField] }; onSave(newData); setNewFieldId(newId); };
+  
+  // --- CLAVE: YA NO ACTUALIZAMOS LA ESTRUCTURA GLOBAL ---
+  const handleSaveField = (uF: Field) => { 
+      const newFields = monthData.fields.map(f => f.id === uF.id ? uF : f); 
+      updateMonth({ fields: newFields }); // Solo actualizamos este mes
+      setNewFieldId(null); 
+  };
+  
+  const handleDeleteField = (fid: string) => { 
+      if (window.confirm("¿Seguro que quieres eliminar este campo de ESTE MES?")) { 
+          const newFields = monthData.fields.filter(f => f.id !== fid); 
+          updateMonth({ fields: newFields }); // Solo actualizamos este mes
+      } 
+  };
+  
+  const handleAddNewField = () => { 
+      const newId = `f_${Date.now()}`; 
+      const newField: Field = { id: newId, name: 'Nuevo Campo', percentage: 0, color: 'gray', icon: 'DollarSign', categories: [{ id: `c_${Date.now()}`, name: 'General', subcategories: [] }], type: 'standard', alertThreshold: 80 }; 
+      const newFields = [...monthData.fields, newField]; 
+      updateMonth({ fields: newFields }); // Solo actualizamos este mes
+      setNewFieldId(newId); 
+  };
+
   const totalExpenses = (Object.values(monthData.expenses) as number[]).reduce((a, b) => a + b, 0) + (Object.values(monthData.extras) as { amount: number }[][]).reduce((acc, items) => acc + items.reduce((s, i) => s + i.amount, 0), 0);
   const available = monthData.salary - totalExpenses;
-  const totalAllocatedPercentage = appData.fields.reduce((acc, field) => acc + field.percentage, 0);
-  const alerts = appData.fields.map(field => { if (field.type === 'savings') return null; const budget = (monthData.salary * field.percentage) / 100; const subTotal = Object.keys(monthData.expenses).reduce((acc, key) => { const isFor = field.categories.some(c => c.subcategories.some(s => s.id === key)); return isFor ? acc + (monthData.expenses[key] || 0) : acc; }, 0); const extraTotal = (monthData.extras[field.id] || []).reduce((acc, item) => acc + item.amount, 0); const totalSpent = subTotal + extraTotal; const pct = budget > 0 ? (totalSpent / budget) * 100 : 0; if (pct >= (field.alertThreshold || 80)) return { fieldName: field.name, pct, isOver: pct >= 100 }; return null; }).filter(Boolean);
-  if (activeChart !== 'none') return <BudgetCharts fields={appData.fields} salary={monthData.salary} expenses={monthData.expenses} extras={monthData.extras} theme={appData.theme} viewMode={activeChart} onBack={() => setActiveChart('none')} />;
+  const totalAllocatedPercentage = monthData.fields.reduce((acc, field) => acc + field.percentage, 0);
+  
+  const alerts = monthData.fields.map(field => { if (field.type === 'savings') return null; const budget = (monthData.salary * field.percentage) / 100; const subTotal = Object.keys(monthData.expenses).reduce((acc, key) => { const isFor = field.categories.some(c => c.subcategories.some(s => s.id === key)); return isFor ? acc + (monthData.expenses[key] || 0) : acc; }, 0); const extraTotal = (monthData.extras[field.id] || []).reduce((acc, item) => acc + item.amount, 0); const totalSpent = subTotal + extraTotal; const pct = budget > 0 ? (totalSpent / budget) * 100 : 0; if (pct >= (field.alertThreshold || 80)) return { fieldName: field.name, pct, isOver: pct >= 100 }; return null; }).filter(Boolean);
+  
+  if (activeChart !== 'none') return <BudgetCharts fields={monthData.fields} salary={monthData.salary} expenses={monthData.expenses} extras={monthData.extras} theme={appData.theme} viewMode={activeChart} onBack={() => setActiveChart('none')} />;
 
   return (
     <div>
@@ -246,7 +283,7 @@ const BudgetPage = ({ appData, onSave, groupId }: { appData: AppData, onSave: (d
       {alerts.length > 0 && <div className="mb-6 space-y-2">{alerts.map((alert, idx) => <div key={idx} className={`p-3 rounded-lg flex items-center gap-2 text-sm font-bold ${alert?.isOver ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-yellow-100 text-yellow-700 border border-yellow-300'}`}><AlertTriangle size={18} /><span>{alert?.fieldName}: {alert?.isOver ? '¡Presupuesto Excedido!' : `Alcanzó el ${alert?.pct.toFixed(0)}%`}</span></div>)}</div>}
       <div className="grid grid-cols-2 gap-4 mb-6"><button onClick={() => setActiveChart('pie')} className="bg-white dark:bg-dark-card p-4 rounded-xl shadow hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border dark:border-gray-700 flex flex-col items-center justify-center gap-2 text-gray-700 dark:text-gray-300"><PieIcon size={32} className="text-blue-500"/><span className="font-bold text-sm">Distribución de Gastos</span></button><button onClick={() => setActiveChart('bar')} className="bg-white dark:bg-dark-card p-4 rounded-xl shadow hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border dark:border-gray-700 flex flex-col items-center justify-center gap-2 text-gray-700 dark:text-gray-300"><BarIcon size={32} className="text-purple-500"/><span className="font-bold text-sm">Presupuesto vs Realidad</span></button></div>
       <div className="flex flex-col gap-6 pb-24">
-          {appData.fields.map(field => (<FieldAccordion key={field.id} field={field} salary={monthData.salary} expenses={monthData.expenses} expensesUsd={monthData.expensesUsd || {}} paidStatus={monthData.paidStatus} extras={monthData.extras} defaultEditing={field.id === newFieldId} totalAllocatedPercentage={totalAllocatedPercentage} onUpdateExpense={handleUpdateExpense} onUpdateExpenseUsd={handleUpdateExpenseUsd} onTogglePaid={handleTogglePaid} onAddExtra={handleAddExtra} onDeleteExtra={handleDeleteExtra} onSaveField={handleSaveField} onDeleteField={handleDeleteField} />))}
+          {monthData.fields.map(field => (<FieldAccordion key={field.id} field={field} salary={monthData.salary} expenses={monthData.expenses} expensesUsd={monthData.expensesUsd || {}} paidStatus={monthData.paidStatus} extras={monthData.extras} defaultEditing={field.id === newFieldId} totalAllocatedPercentage={totalAllocatedPercentage} onUpdateExpense={handleUpdateExpense} onUpdateExpenseUsd={handleUpdateExpenseUsd} onTogglePaid={handleTogglePaid} onAddExtra={handleAddExtra} onDeleteExtra={handleDeleteExtra} onSaveField={handleSaveField} onDeleteField={handleDeleteField} />))}
           <div className="py-6 px-2 flex justify-center z-50 relative"><button onClick={handleAddNewField} className="w-full max-w-3xl bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl shadow-lg flex items-center justify-center gap-2 transition-transform hover:scale-[1.01] active:scale-95"><Plus size={24} /> Crear Nuevo Campo</button></div>
           <div ref={bottomRef} style={{height: '20px'}}></div>
       </div>
@@ -254,7 +291,6 @@ const BudgetPage = ({ appData, onSave, groupId }: { appData: AppData, onSave: (d
   );
 };
 
-// --- COMPONENTE PRINCIPAL (ESTO ES LO QUE FALTABA) ---
 const App: React.FC = () => {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -282,10 +318,8 @@ const App: React.FC = () => {
 
   const handleSaveData = async (newData: AppData) => { setAppData(newData); if (user) { const targetId = groupId || user.uid; await saveAppData(targetId, newData); } };
   const handleToggleTheme = async () => { const newTheme = appData.theme === 'light' ? 'dark' : 'light'; const newData = { ...appData, theme: newTheme }; handleSaveData(newData); };
-
   const handleJoinGroup = (newGroupId: string) => { localStorage.setItem('active_group_id', newGroupId); setGroupId(newGroupId); setShowGroupModal(false); };
   const handleLeaveGroup = () => { localStorage.removeItem('active_group_id'); setGroupId(null); setShowGroupModal(false); };
-
   const handleUnlock = () => setIsLocked(false);
   const handleSetPin = (pin: string) => { localStorage.setItem('app_pin', pin); setShowPinSetup(false); setIsLocked(false); };
   const handleRemovePin = () => { if(window.confirm("¿Deseas eliminar el bloqueo por PIN?")) { localStorage.removeItem('app_pin'); setShowPinSetup(false); } };
@@ -303,7 +337,6 @@ const App: React.FC = () => {
   return (
     <>
         {mounted && createPortal(<>{lluvias.map(id => (<div key={id} className="fixed inset-0 pointer-events-none z-[99999] overflow-hidden">{Array.from({ length: 60 }).map((_, i) => (<div key={i} className="absolute text-4xl animate-money-rain" style={{ top: `-${Math.random() * 20}vh`, left: `${Math.random() * 100}vw`, animationDelay: `${Math.random() * 2}s`, animationDuration: `${2 + Math.random() * 3}s`, opacity: 0.8 + Math.random() * 0.2 }}>💵</div>))}</div>))}</>, document.body)}
-        
         {showGroupModal && (
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
                 <div className="bg-white dark:bg-dark-card w-full max-w-md rounded-2xl p-6 shadow-xl border dark:border-gray-700 relative animate-in zoom-in-95 duration-200">
@@ -313,29 +346,11 @@ const App: React.FC = () => {
                 </div>
             </div>
         )}
-        
         {showPinSetup && <PinLock mode="setup" onSuccess={handleSetPin} onCancel={() => setShowPinSetup(false)} />}
-
         <HashRouter>
             <Layout theme={appData.theme} toggleTheme={handleToggleTheme} onMoneyClick={triggerRain}>
                 <Routes>
-                    <Route path="/" element={
-                        <HomePage 
-                            user={user} 
-                            appData={appData} 
-                            onSave={handleSaveData} 
-                            groupId={groupId} 
-                            onChangeGroup={() => setShowGroupModal(true)}
-                            onOpenGroupModal={() => setShowGroupModal(true)}
-                            onSetupPin={() => {
-                                if (localStorage.getItem('app_pin')) {
-                                    handleRemovePin();
-                                } else {
-                                    setShowPinSetup(true);
-                                }
-                            }}
-                        />
-                    } />
+                    <Route path="/" element={<HomePage user={user} appData={appData} onSave={handleSaveData} groupId={groupId} onChangeGroup={() => setShowGroupModal(true)} onOpenGroupModal={() => setShowGroupModal(true)} onSetupPin={() => { if (localStorage.getItem('app_pin')) { handleRemovePin(); } else { setShowPinSetup(true); } }} />} />
                     <Route path="/budget" element={<BudgetPage appData={appData} onSave={handleSaveData} groupId={groupId} />} />
                 </Routes>
             </Layout>

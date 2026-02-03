@@ -23,6 +23,7 @@ export interface Field {
 
 export interface MonthlyData {
   salary: number;
+  fields: Field[]; // <--- ESTO ES LO NUEVO: El mes guarda sus propios campos
   expenses: Record<string, number>;
   expensesUsd?: Record<string, number>;
   paidStatus: Record<string, boolean>;
@@ -32,6 +33,6 @@ export interface MonthlyData {
 
 export interface AppData {
   theme: 'light' | 'dark';
-  fields: Field[]; 
+  fields: Field[]; // Mantenemos esto como "Estructura Maestra/Ultima usada"
   months: Record<string, MonthlyData>;
 }
