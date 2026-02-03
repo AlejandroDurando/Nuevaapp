@@ -8,11 +8,11 @@ import BudgetCharts from './components/BudgetCharts';
 import RecurringModal from './components/RecurringModal';
 import PinLock from './components/PinLock';
 import { YEARS, MONTHS, INITIAL_FIELDS } from './constants';
-import { fetchAppData, saveAppData, toggleThemeInDb } from './services/storageService';
+import { fetchAppData, saveAppData } from './services/storageService';
 import { Field, AppData, MonthlyData } from './types';
 import { ArrowLeft, Plus, DollarSign, AlertTriangle, PieChart as PieIcon, BarChart as BarIcon, Eye, EyeOff, LogOut, User, UserCircle, Users, Lock, Unlock, X, CheckCircle } from 'lucide-react';
 
-// --- FIREBASE IMPORTS ---
+// --- FIREBASE ---
 import { auth } from './firebase'; 
 import { signInWithPopup, signInAnonymously, GoogleAuthProvider, signOut, onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 
@@ -20,11 +20,11 @@ const googleProvider = new GoogleAuthProvider();
 
 const DEFAULT_APP_DATA: AppData = {
   theme: 'dark',
-  fields: [],
+  fields: INITIAL_FIELDS,
   months: {}
 };
 
-// --- HELPER FUNCTIONS ---
+// --- HELPERS ---
 const formatNumberDisplay = (val: string | number): string => {
   if (val === '' || val === undefined || val === null) return '';
   if (typeof val === 'number') {
@@ -39,7 +39,6 @@ const parseNumberInput = (val: string): number => {
   return parseFloat(dotDecimal) || 0;
 };
 
-// Lógica para permitir escribir decimales (comas) en el input de sueldo
 const handleMoneyInput = (raw: string): string => {
     if (!/^[0-9.,]*$/.test(raw)) return raw;
     if (raw.endsWith(',')) return raw;
@@ -59,7 +58,28 @@ const getMonthDataSafe = (appData: AppData, year: number, month: number): Monthl
     return appData.months[key] || { salary: 0, expenses: {}, expensesUsd: {}, paidStatus: {}, extras: {} };
 };
 
-// --- COMPONENTE: LOGIN ---
+// --- COMPONENTE GROUP SELECTOR ---
+const GroupSelector = ({ onJoinGroup, user }: { onJoinGroup: (id: string) => void, user: any }) => {
+  const [groupName, setGroupName] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanName = groupName.trim().toLowerCase().replace(/\s+/g, '_');
+    if (cleanName.length > 2) onJoinGroup(cleanName);
+  };
+
+  return (
+    <div>
+       <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Ingresa un nombre único (ej: <b>pareja_2025</b>) para compartir gastos.</p>
+       <form onSubmit={handleSubmit}>
+         <input autoFocus type="text" placeholder="Nombre del grupo..." value={groupName} onChange={e => setGroupName(e.target.value)} className="w-full p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl text-lg font-bold mb-4 focus:ring-2 focus:ring-purple-500 outline-none dark:text-white"/>
+         <button type="submit" disabled={groupName.length < 3} className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow-lg disabled:opacity-50">Entrar al Grupo</button>
+       </form>
+    </div>
+  );
+};
+
+// --- PAGINA LOGIN ---
 const LoginPage = ({ onLogin }: { onLogin: () => void }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -92,64 +112,15 @@ const LoginPage = ({ onLogin }: { onLogin: () => void }) => {
   );
 };
 
-// --- MODAL DE GRUPO ---
-const GroupModal = ({ currentGroupId, onJoin, onLeave, onClose }: { currentGroupId: string | null, onJoin: (id: string) => void, onLeave: () => void, onClose: () => void }) => {
-  const [groupName, setGroupName] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanName = groupName.trim().toLowerCase().replace(/\s+/g, '_');
-    if (cleanName.length > 2) onJoin(cleanName);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-dark-card w-full max-w-md rounded-2xl shadow-2xl border dark:border-gray-700 flex flex-col animate-in zoom-in-95 duration-200">
-        <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-          <h3 className="text-xl font-bold dark:text-white flex items-center gap-2"><Users className="text-purple-500" /> {currentGroupId ? 'Tu Grupo' : 'Unirse a Grupo'}</h3>
-          <button onClick={onClose}><X className="text-gray-400 hover:text-red-500" /></button>
-        </div>
-        <div className="p-6">
-          {currentGroupId ? (
-            <div className="text-center">
-              <div className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 p-4 rounded-xl mb-4 flex flex-col items-center">
-                <CheckCircle size={32} className="mb-2" />
-                <span className="text-sm font-bold uppercase tracking-wider">Estás conectado a:</span>
-                <span className="text-2xl font-black mt-1">{currentGroupId}</span>
-              </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Cualquier persona con este nombre puede ver y editar estos datos.</p>
-              <button onClick={onLeave} className="w-full py-3 border-2 border-red-500 text-red-500 font-bold rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">Salir del Grupo (Volver a Personal)</button>
-            </div>
-          ) : (
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Ingresa un nombre único (ej: <b>pareja_2025</b>) para compartir gastos.</p>
-              <form onSubmit={handleSubmit}>
-                <input autoFocus type="text" placeholder="Nombre del grupo..." value={groupName} onChange={e => setGroupName(e.target.value)} className="w-full p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl text-lg font-bold mb-4 focus:ring-2 focus:ring-purple-500 outline-none dark:text-white"/>
-                <button type="submit" disabled={groupName.length < 3} className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow-lg disabled:opacity-50">Entrar al Grupo</button>
-              </form>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// --- HOME PAGE ---
-const HomePage = ({ user, appData, onSave, groupId, onOpenGroupModal, onSetupPin }: { user: FirebaseUser | null, appData: AppData, onSave: (data: AppData) => void, groupId: string | null, onOpenGroupModal: () => void, onSetupPin: () => void }) => {
+// --- PAGINA HOME ---
+const HomePage = ({ user, appData, onSave, groupId, onOpenGroupModal, onSetupPin, onChangeGroup }: { user: FirebaseUser | null, appData: AppData, onSave: (data: AppData) => void, groupId: string | null, onOpenGroupModal: () => void, onSetupPin: () => void, onChangeGroup: () => void }) => {
   const navigate = useNavigate();
   const [year, setYear] = useState(() => { const s = localStorage.getItem('last_view_year'); return s ? parseInt(s) : new Date().getFullYear(); });
   const [month, setMonth] = useState(() => { const s = localStorage.getItem('last_view_month'); return s ? parseInt(s) : new Date().getMonth(); });
   const [salary, setSalary] = useState('');
   
-  // Persistencia del Ojo (Sueldo)
   const [showSalary, setShowSalary] = useState(() => localStorage.getItem('pref_show_salary') !== 'hidden');
-
-  const toggleShowSalary = () => {
-      const newState = !showSalary;
-      setShowSalary(newState);
-      localStorage.setItem('pref_show_salary', newState ? 'visible' : 'hidden');
-  };
+  const toggleShowSalary = () => { const newState = !showSalary; setShowSalary(newState); localStorage.setItem('pref_show_salary', newState ? 'visible' : 'hidden'); };
 
   const displayName = user?.displayName || (user?.isAnonymous ? 'Invitado' : 'Usuario');
   const photoURL = user?.photoURL;
@@ -175,9 +146,7 @@ const HomePage = ({ user, appData, onSave, groupId, onOpenGroupModal, onSetupPin
     }
   };
 
-  const handleSalaryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSalary(handleMoneyInput(e.target.value));
-  };
+  const handleSalaryChange = (e: React.ChangeEvent<HTMLInputElement>) => { setSalary(handleMoneyInput(e.target.value)); };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[80vh]">
@@ -206,21 +175,8 @@ const HomePage = ({ user, appData, onSave, groupId, onOpenGroupModal, onSetupPin
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sueldo Mensual</label>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-              <input 
-                type={showSalary ? "text" : "password"} 
-                value={salary} 
-                onChange={handleSalaryChange} 
-                className="w-full p-3 pl-8 pr-12 rounded-lg bg-gray-50 dark:bg-gray-800 border dark:border-gray-700 dark:text-white text-lg font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none" 
-                placeholder="0" 
-                required
-              />
-              <button 
-                type="button"
-                onClick={toggleShowSalary}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
-              >
-                {showSalary ? <Eye size={20} /> : <EyeOff size={20} />}
-              </button>
+              <input type={showSalary ? "text" : "password"} value={salary} onChange={handleSalaryChange} className="w-full p-3 pl-8 pr-12 rounded-lg bg-gray-50 dark:bg-gray-800 border dark:border-gray-700 dark:text-white text-lg font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="0" required/>
+              <button type="button" onClick={toggleShowSalary} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">{showSalary ? <Eye size={20} /> : <EyeOff size={20} />}</button>
             </div>
           </div>
           <button type="submit" className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg transform transition hover:scale-[1.02] active:scale-95">Continuar</button>
@@ -241,14 +197,8 @@ const BudgetPage = ({ appData, onSave, groupId }: { appData: AppData, onSave: (d
   
   const [showRecurringModal, setShowRecurringModal] = useState(false);
   const [recurringItems, setRecurringItems] = useState<any[]>([]);
-  
-  // Persistencia del Ojo en el Balance
   const [showBalance, setShowBalance] = useState(() => localStorage.getItem('pref_show_balance') !== 'hidden');
-  const toggleShowBalance = () => {
-      const newState = !showBalance;
-      setShowBalance(newState);
-      localStorage.setItem('pref_show_balance', newState ? 'visible' : 'hidden');
-  };
+  const toggleShowBalance = () => { const newState = !showBalance; setShowBalance(newState); localStorage.setItem('pref_show_balance', newState ? 'visible' : 'hidden'); };
 
   const [activeChart, setActiveChart] = useState<'none' | 'pie' | 'bar'>('none');
   const [newFieldId, setNewFieldId] = useState<string | null>(null);
@@ -304,7 +254,7 @@ const BudgetPage = ({ appData, onSave, groupId }: { appData: AppData, onSave: (d
   );
 };
 
-// --- MAIN APP ---
+// --- COMPONENTE PRINCIPAL (ESTO ES LO QUE FALTABA) ---
 const App: React.FC = () => {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -316,7 +266,6 @@ const App: React.FC = () => {
   const [showPinSetup, setShowPinSetup] = useState(false);
 
   useEffect(() => { const savedPin = localStorage.getItem('app_pin'); if (savedPin) setIsLocked(true); }, []);
-
   useEffect(() => { const unsubscribe = onAuthStateChanged(auth, (u) => { setUser(u); setAuthLoading(false); }); return () => unsubscribe(); }, []);
 
   useEffect(() => {
