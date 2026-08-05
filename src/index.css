@@ -1,33 +1,92 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: 'Geist', 'Geist Sans', system-ui, -apple-system, sans-serif;
+  --font-display: 'Geist', 'Geist Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Geist Mono', monospace;
+}
 
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --bg-app: #F4F7FB;
+  --bg-card: #FFFFFF;
+  --text-main: #0F172A;
+  --text-sub: #64748B;
+  --border-color: #E2E8F0;
+  
+  --accent-vivir: #6366F1;
+  --accent-vivir-bg: #EEF0FF;
+  
+  --accent-inversion: #10B981;
+  --accent-inversion-bg: #ECFDF5;
+  
+  --accent-disfrute: #F59E0B;
+  --accent-disfrute-bg: #FFFBEB;
+  
+  --accent-alert: #EF4444;
+  --accent-alert-bg: #FEF2F2;
+
+  font-family: var(--font-sans);
+  color-scheme: light dark;
 }
 
-/* Forzamos los colores base del body */
+.dark {
+  --bg-app: #0B1120;
+  --bg-card: #131B2E;
+  --text-main: #E5E9F0;
+  --text-sub: #8B96A8;
+  --border-color: #22304A;
+  
+  --accent-vivir: #818CF8;
+  --accent-vivir-bg: rgba(99, 102, 241, 0.15);
+  
+  --accent-inversion: #34D399;
+  --accent-inversion-bg: rgba(16, 185, 129, 0.15);
+  
+  --accent-disfrute: #FBBF24;
+  --accent-disfrute-bg: rgba(245, 158, 11, 0.15);
+  
+  --accent-alert: #F87171;
+  --accent-alert-bg: rgba(239, 68, 68, 0.15);
+}
+
 body {
-  @apply bg-gray-100 text-gray-900 transition-colors duration-300;
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  font-family: var(--font-sans);
   margin: 0;
   min-height: 100vh;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
-/* Solo en modo oscuro aplicamos el fondo negro */
-.dark body {
-  @apply bg-[#121212] text-gray-100;
-}
-
-/* Estilos para la barra de desplazamiento */
+/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
 }
 ::-webkit-scrollbar-track {
-  @apply bg-transparent;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  @apply bg-gray-300 rounded-full;
+  background-color: #CBD5E1;
+  border-radius: 9999px;
 }
 .dark ::-webkit-scrollbar-thumb {
-  @apply bg-gray-700;
+  background-color: #22304A;
+}
+
+/* Card utility class for precise ambient + direct shadows specified */
+.card-shadow {
+  box-shadow: 0 1px 2px rgba(16,24,40,0.04), 0 2px 8px -2px rgba(16,24,40,0.08);
+}
+.dark .card-shadow {
+  box-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 4px 16px -4px rgba(0,0,0,0.5);
+}
+.card-shadow-hover:hover {
+  box-shadow: 0 4px 16px -4px rgba(16,24,40,0.15);
+  transform: translateY(-2px);
+}
+.dark .card-shadow-hover:hover {
+  box-shadow: 0 6px 20px -4px rgba(0,0,0,0.7);
+  transform: translateY(-2px);
 }

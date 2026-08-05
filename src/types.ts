@@ -2,12 +2,14 @@ export interface Subcategory {
   id: string;
   name: string;
   recurringAmount?: number;
+  isHalf?: boolean; // Si es true, contabiliza el 50% del importe ingresado
 }
 
 export interface Category {
   id: string;
   name: string;
   subcategories: Subcategory[];
+  isHalf?: boolean; // Si es true, por defecto todas sus subcategorías contabilizan el 50%
 }
 
 export interface Field {

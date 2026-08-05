@@ -55,17 +55,17 @@ const PinLock: React.FC<PinLockProps> = ({ mode, onSuccess, onCancel, storedPin 
   }, [input, step, storedPin, confirm, onSuccess]);
 
   return (
-    <div className="fixed inset-0 bg-gray-900 text-white z-[200] flex flex-col items-center justify-center p-4 animate-in fade-in duration-300">
+    <div className="fixed inset-0 bg-[#080D1A] text-[#F4FEFF] z-[200] flex flex-col items-center justify-center p-4 animate-in fade-in duration-300 font-sans">
       <div className="mb-8 flex flex-col items-center">
-        <div className="bg-blue-600 p-4 rounded-full mb-4 shadow-lg shadow-blue-500/50">
-          {mode === 'setup' ? <Unlock size={32} /> : <Lock size={32} />}
+        <div className="bg-[#0E2F76] p-4.5 rounded-3xl mb-4 shadow-xl shadow-[#0E2F76]/40 border border-[#A9C0E0]/30">
+          {mode === 'setup' ? <Unlock size={32} className="text-[#F4FEFF]" /> : <Lock size={32} className="text-[#F4FEFF]" />}
         </div>
-        <h2 className="text-2xl font-bold">
+        <h2 className="text-2xl font-black tracking-tight text-[#F4FEFF]">
           {step === 'enter' && 'Ingresa tu PIN'}
           {step === 'create' && 'Crea un PIN de 4 dígitos'}
           {step === 'confirm' && 'Confirma tu PIN'}
         </h2>
-        <p className="text-gray-400 mt-2 h-6 text-sm">{error}</p>
+        <p className="text-[#A9C0E0] mt-2 h-6 text-sm font-semibold">{error}</p>
       </div>
 
       <div className="flex gap-4 mb-10">
@@ -73,7 +73,7 @@ const PinLock: React.FC<PinLockProps> = ({ mode, onSuccess, onCancel, storedPin 
           <div
             key={i}
             className={`w-4 h-4 rounded-full border-2 transition-all duration-200 ${
-              i < input.length ? 'bg-blue-500 border-blue-500 scale-110' : 'border-gray-600'
+              i < input.length ? 'bg-[#F4FEFF] border-[#F4FEFF] scale-125 shadow-md shadow-[#F4FEFF]/50' : 'border-[#1E2D4A]'
             }`}
           />
         ))}
@@ -84,25 +84,25 @@ const PinLock: React.FC<PinLockProps> = ({ mode, onSuccess, onCancel, storedPin 
           <button
             key={num}
             onClick={() => handleNum(num.toString())}
-            className="h-20 rounded-2xl bg-gray-800 hover:bg-gray-700 text-3xl font-bold transition-colors flex items-center justify-center active:scale-95"
+            className="h-20 rounded-3xl bg-[#0F1A30] hover:bg-[#1E2D4A] border border-[#1E2D4A] text-3xl font-black text-[#F4FEFF] transition-all flex items-center justify-center active:scale-95 shadow-md"
           >
             {num}
           </button>
         ))}
         <div className="flex items-center justify-center">
             {onCancel && (
-                <button onClick={onCancel} className="text-sm text-gray-400 font-bold uppercase tracking-wider">Cancelar</button>
+                <button onClick={onCancel} className="text-xs text-[#A9C0E0] font-extrabold uppercase tracking-wider hover:text-white">Cancelar</button>
             )}
         </div>
         <button
           onClick={() => handleNum('0')}
-          className="h-20 rounded-2xl bg-gray-800 hover:bg-gray-700 text-3xl font-bold transition-colors flex items-center justify-center active:scale-95"
+          className="h-20 rounded-3xl bg-[#0F1A30] hover:bg-[#1E2D4A] border border-[#1E2D4A] text-3xl font-black text-[#F4FEFF] transition-all flex items-center justify-center active:scale-95 shadow-md"
         >
           0
         </button>
         <button
           onClick={handleDelete}
-          className="h-20 rounded-2xl hover:bg-red-900/30 text-red-400 transition-colors flex items-center justify-center active:scale-95"
+          className="h-20 rounded-3xl hover:bg-red-500/20 text-red-400 transition-all flex items-center justify-center active:scale-95"
         >
           <Delete size={28} />
         </button>

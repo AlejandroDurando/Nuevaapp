@@ -1,82 +1,83 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Moon, Sun, HelpCircle, X } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
-  onMoneyClick?: () => void; // <--- NUEVA PROPIEDAD
+  onMoneyClick?: () => void;
 }
 
 const Layout: React.FC<LayoutProps> = ({ children, theme, toggleTheme, onMoneyClick }) => {
   const [showHelp, setShowHelp] = useState(false);
 
-  // Determinar si es modo claro
-  const isLight = theme === 'light';
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
 
   return (
     <div className={theme}>
-      <div 
-        style={{ backgroundImage: isLight ? 'none' : undefined, backgroundColor: isLight ? '#f3f4f6' : undefined }}
-        className="min-h-screen bg-gray-100 dark:bg-dark-bg text-gray-900 dark:text-dark-text transition-colors duration-300"
-      >
+      <div className="min-h-screen bg-[#F4F7FB] dark:bg-[#0B1120] text-[#0F172A] dark:text-[#E5E9F0] font-sans transition-colors duration-250">
         
         {/* Help Modal */}
         {showHelp && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="bg-white dark:bg-dark-card w-full max-w-lg rounded-2xl shadow-2xl border dark:border-gray-700 max-h-[90vh] flex flex-col">
-              <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                <h2 className="text-xl font-bold dark:text-white">¿Cómo funciona la app?</h2>
-                <button onClick={() => setShowHelp(false)} className="text-gray-500 hover:text-red-500">
-                  <X size={24} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
+            <div className="bg-white dark:bg-[#131B2E] w-full max-w-lg rounded-3xl card-shadow border border-black/5 dark:border-white/5 max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              <div className="p-5 border-b border-[#E2E8F0] dark:border-[#22304A] flex justify-between items-center bg-[#F4F7FB] dark:bg-[#0B1120]">
+                <h2 className="text-xl font-bold text-[#0F172A] dark:text-[#E5E9F0]">¿Cómo funciona la app?</h2>
+                <button onClick={() => setShowHelp(false)} className="p-1.5 text-[#64748B] dark:text-[#8B96A8] hover:text-red-500 rounded-full hover:bg-slate-100 dark:hover:bg-[#22304A] transition-colors">
+                  <X size={20} />
                 </button>
               </div>
-              <div className="p-6 overflow-y-auto space-y-6 text-sm leading-relaxed text-gray-700 dark:text-gray-300">
-                <section>
-                  <h3 className="text-blue-500 font-bold text-lg mb-2">Gastos para Vivir (50%)</h3>
-                  <p>
-                    "Esta parte de tu sueldo está destinada a cubrir todo lo esencial para tu día a día. Incluye vivienda, comida, transporte, servicios, salud, educación y cualquier gasto necesario para mantener tu calidad de vida."
+              <div className="p-6 overflow-y-auto space-y-5 text-sm leading-relaxed text-[#64748B] dark:text-[#8B96A8]">
+                <section className="bg-[#F4F7FB] dark:bg-[#0B1120] p-4 rounded-2xl border border-[#E2E8F0] dark:border-[#22304A]">
+                  <h3 className="text-[#6366F1] dark:text-[#818CF8] font-bold text-base mb-1">Gastos para Vivir (50%)</h3>
+                  <p className="text-xs sm:text-sm">
+                    Destinado a cubrir todo lo esencial para tu día a día: vivienda, comida, transporte, servicios, salud y cualquier gasto necesario.
                   </p>
                 </section>
-                <section>
-                  <h3 className="text-purple-500 font-bold text-lg mb-2">Inversión (25%)</h3>
-                  <p>
-                    "Este porcentaje se asigna a todo aquello que pueda hacer crecer tu dinero o tus habilidades. Podés usarlo para inversiones tradicionales, oportunidades de negocio o formación profesional."
+                <section className="bg-[#F4F7FB] dark:bg-[#0B1120] p-4 rounded-2xl border border-[#E2E8F0] dark:border-[#22304A]">
+                  <h3 className="text-[#10B981] dark:text-[#34D399] font-bold text-base mb-1">Inversión (25%)</h3>
+                  <p className="text-xs sm:text-sm">
+                    Para hacer crecer tu patrimonio o tus habilidades: inversiones financieras, proyectos o educación profesional.
                   </p>
                 </section>
-                <section>
-                  <h3 className="text-pink-500 font-bold text-lg mb-2">Disfrute (15%)</h3>
-                  <p>
-                    "Este porcentaje es para vos, para que puedas disfrutar sin culpa. Incluye salidas, viajes, hobbies, ropa, tecnología, o cualquier gusto personal."
+                <section className="bg-[#F4F7FB] dark:bg-[#0B1120] p-4 rounded-2xl border border-[#E2E8F0] dark:border-[#22304A]">
+                  <h3 className="text-[#F59E0B] dark:text-[#FBBF24] font-bold text-base mb-1">Disfrute (15%)</h3>
+                  <p className="text-xs sm:text-sm">
+                    Para disfrutar sin culpa: salidas, viajes, pasatiempos, compras o gustos personales.
                   </p>
                 </section>
-                <section>
-                  <h3 className="text-green-500 font-bold text-lg mb-2">Fondo de Seguridad (10%)</h3>
-                  <p>
-                    "Este monto está pensado como un colchón para imprevistos. Sirve para emergencias médicas, reparaciones del hogar o gastos urgentes."
+                <section className="bg-[#F4F7FB] dark:bg-[#0B1120] p-4 rounded-2xl border border-[#E2E8F0] dark:border-[#22304A]">
+                  <h3 className="text-[#64748B] dark:text-[#8B96A8] font-bold text-base mb-1">Fondo de Seguridad (10%)</h3>
+                  <p className="text-xs sm:text-sm">
+                    Un colchón para emergencias médicas, reparaciones imprevistas u contingencias financieras.
                   </p>
                 </section>
-                <div className="pt-4 text-xs text-gray-500 italic text-center border-t dark:border-gray-800">
-                  *Podés editar los porcentajes a tu gusto en la sección "Editar" de cada categoría.
-                </div>
               </div>
             </div>
           </div>
         )}
 
         {/* Header */}
-        <header className="sticky top-0 z-40 bg-white/80 dark:bg-dark-card/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-4 py-3">
-          <div className="max-w-3xl mx-auto flex justify-between items-center">
+        <header className="sticky top-0 z-40 bg-[#F4F7FB]/90 dark:bg-[#0B1120]/90 backdrop-blur-xl border-b border-[#E2E8F0] dark:border-[#22304A] px-4 py-3.5 transition-colors">
+          <div className="max-w-4xl md:max-w-6xl xl:max-w-7xl mx-auto flex justify-between items-center">
             
-            {/* Título y Billete (Ahora juntos en el flujo) */}
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg md:text-xl font-bold text-blue-600 dark:text-blue-400 truncate">
+            {/* Título y Billete */}
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-[#6366F1] dark:bg-[#818CF8] flex items-center justify-center shadow-md shadow-[#6366F1]/20">
+                <span className="text-white dark:text-[#0B1120] text-base font-extrabold font-sans">F</span>
+              </div>
+              <h1 className="text-lg md:text-xl font-bold text-[#0F172A] dark:text-[#E5E9F0] tracking-tight">
                 Finanzas Personales
               </h1>
-              {/* EL BILLETE AHORA ESTÁ AQUÍ, NO FLOTANDO */}
               <button 
                 onClick={onMoneyClick} 
-                className="text-2xl hover:scale-110 transition-transform cursor-pointer"
+                className="text-2xl hover:scale-125 active:scale-90 transition-transform cursor-pointer ml-0.5"
                 title="Lluvia de dinero"
               >
                 💵
@@ -87,21 +88,23 @@ const Layout: React.FC<LayoutProps> = ({ children, theme, toggleTheme, onMoneyCl
             <div className="flex items-center gap-2 sm:gap-3">
               <button 
                 onClick={() => setShowHelp(true)}
-                className="p-2 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
+                className="p-2 text-[#64748B] dark:text-[#8B96A8] hover:text-[#0F172A] dark:hover:text-[#E5E9F0] hover:bg-[#E2E8F0]/50 dark:hover:bg-[#22304A]/50 rounded-xl transition-all active:scale-95"
+                title="Ayuda"
               >
-                <HelpCircle size={20} />
+                <HelpCircle size={20} strokeWidth={1.75} />
               </button>
               <button 
                 onClick={toggleTheme} 
-                className="p-2 bg-gray-200 dark:bg-gray-700 text-yellow-600 dark:text-yellow-400 rounded-full transition-colors"
+                className="p-2 bg-white dark:bg-[#131B2E] text-[#0F172A] dark:text-[#E5E9F0] hover:bg-[#F4F7FB] dark:hover:bg-[#0B1120] rounded-xl border border-black/5 dark:border-white/5 card-shadow transition-all active:scale-95"
+                title="Cambiar tema"
               >
-                {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+                {theme === 'dark' ? <Sun size={20} strokeWidth={1.75} className="text-[#FBBF24]" /> : <Moon size={20} strokeWidth={1.75} className="text-[#6366F1]" />}
               </button>
             </div>
           </div>
         </header>
 
-        <main className="max-w-3xl mx-auto p-4 pb-24">
+        <main className="max-w-4xl md:max-w-6xl xl:max-w-7xl mx-auto p-4 sm:p-6 pb-28">
           {children}
         </main>
       </div>

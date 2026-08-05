@@ -2,7 +2,7 @@ import { Field, AppData } from './types';
 import { 
   Home, Car, Smile, Shield, DollarSign, Zap, ShoppingBag, 
   Coffee, Plane, Briefcase, GraduationCap, Heart, Music, 
-  Smartphone, Wifi, Droplet, Flame, TrendingUp, Target
+  Smartphone, Wifi, Droplet, Flame, TrendingUp, Target, Sparkles
 } from 'lucide-react';
 
 export const INITIAL_FIELDS: Field[] = [
@@ -63,7 +63,7 @@ export const INITIAL_FIELDS: Field[] = [
     name: 'Disfrute',
     percentage: 15,
     color: 'pink',
-    icon: 'Smile',
+    icon: 'Sparkles',
     type: 'standard',
     categories: [
       {
@@ -110,7 +110,7 @@ export const COLORS = [
 export const ICON_MAP: Record<string, any> = {
   Home, Car, Smile, Shield, DollarSign, Zap, ShoppingBag,
   Coffee, Plane, Briefcase, GraduationCap, Heart, Music,
-  Smartphone, Wifi, Droplet, Flame, TrendingUp, Target
+  Smartphone, Wifi, Droplet, Flame, TrendingUp, Target, Sparkles
 };
 
 export const YEARS = Array.from({ length: 11 }, (_, i) => 2020 + i); // 2020-2030

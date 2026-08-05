@@ -48,25 +48,27 @@ const BudgetCharts: React.FC<BudgetChartsProps> = ({ fields, salary, expenses, e
     };
   }).filter(d => d.budget > 0 || d.spent > 0);
 
-  const textColor = theme === 'dark' ? '#E0E0E0' : '#374151';
+  const textColor = theme === 'dark' ? '#F4FEFF' : '#0E2F76';
   const tooltipStyle = { 
-    backgroundColor: theme === 'dark' ? '#1E1E1E' : '#FFFFFF', 
-    borderColor: theme === 'dark' ? '#374151' : '#E5E7EB',
-    color: textColor
+    backgroundColor: theme === 'dark' ? '#0F1A30' : '#FFFFFF', 
+    borderColor: theme === 'dark' ? '#1E2D4A' : '#A9C0E0',
+    borderRadius: '16px',
+    color: textColor,
+    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)'
   };
 
   const formatMoney = (val: number) => val.toLocaleString('es-AR');
 
   return (
-    <div className="bg-white dark:bg-dark-card rounded-xl shadow-xl border dark:border-gray-700 p-4 min-h-[50vh]">
+    <div className="bg-white dark:bg-[#0F1A30] rounded-3xl shadow-xl border border-[#A9C0E0]/30 dark:border-[#1E2D4A] p-6 min-h-[50vh]">
       <div className="flex items-center mb-6">
         <button 
           onClick={onBack} 
-          className="mr-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300"
+          className="mr-4 p-2.5 rounded-xl hover:bg-[#A9C0E0]/20 dark:hover:bg-[#1E2D4A] text-[#0E2F76] dark:text-[#A9C0E0] transition-all"
         >
-          <ArrowLeft size={24} />
+          <ArrowLeft size={22} />
         </button>
-        <h2 className="text-xl font-bold dark:text-white">
+        <h2 className="text-xl font-extrabold text-[#0E2F76] dark:text-[#F4FEFF]">
           {viewMode === 'pie' ? 'Distribución de Gastos' : 'Presupuesto vs Realidad'}
         </h2>
       </div>
@@ -93,12 +95,12 @@ const BudgetCharts: React.FC<BudgetChartsProps> = ({ fields, salary, expenses, e
             </PieChart>
           ) : (
             <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#374151' : '#e5e7eb'} horizontal={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#1E2D4A' : '#A9C0E0/30'} horizontal={false} />
               <XAxis type="number" hide />
-              <YAxis type="category" dataKey="name" width={100} tick={{ fill: textColor, fontSize: 12 }} />
+              <YAxis type="category" dataKey="name" width={100} tick={{ fill: textColor, fontSize: 12, fontWeight: 700 }} />
               <Tooltip cursor={{fill: 'transparent'}} contentStyle={tooltipStyle} formatter={(val: number) => `$${formatMoney(val)}`} />
-              <Bar dataKey="budget" name="Presupuesto" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={15} />
-              <Bar dataKey="spent" name="Gastado" fill="#ef4444" radius={[0, 4, 4, 0]} barSize={15} />
+              <Bar dataKey="budget" name="Presupuesto" fill="#0E2F76" radius={[0, 6, 6, 0]} barSize={16} />
+              <Bar dataKey="spent" name="Gastado" fill="#ef4444" radius={[0, 6, 6, 0]} barSize={16} />
             </BarChart>
           )}
         </ResponsiveContainer>

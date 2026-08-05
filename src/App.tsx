@@ -86,10 +86,11 @@ const GroupSelector = ({ onJoinGroup, user }: { onJoinGroup: (id: string) => voi
   };
   return (
     <div>
-       <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Ingresa un nombre único (ej: <b>pareja_2025</b>) para compartir gastos.</p>
-       <form onSubmit={handleSubmit}>
-         <input autoFocus type="text" placeholder="Nombre del grupo..." value={groupName} onChange={e => setGroupName(e.target.value)} className="w-full p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl text-lg font-bold mb-4 focus:ring-2 focus:ring-purple-500 outline-none dark:text-white"/>
-         <button type="submit" disabled={groupName.length < 3} className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow-lg disabled:opacity-50">Entrar al Grupo</button>
+       <h3 className="text-xl font-extrabold text-[#0E2F76] dark:text-[#F4FEFF] mb-2">Unirse o Crear Grupo</h3>
+       <p className="text-xs sm:text-sm text-[#0E2F76]/70 dark:text-[#A9C0E0] mb-5">Ingresa un nombre único (ej: <b>pareja_2025</b>) para sincronizar gastos entre varios dispositivos.</p>
+       <form onSubmit={handleSubmit} className="space-y-4">
+         <input autoFocus type="text" placeholder="Nombre del grupo..." value={groupName} onChange={e => setGroupName(e.target.value)} className="w-full p-4 bg-[#F4FEFF] dark:bg-[#080D1A] border border-[#A9C0E0]/50 dark:border-[#1E2D4A] rounded-2xl text-base font-bold text-[#0E2F76] dark:text-[#F4FEFF] focus:ring-2 focus:ring-[#0E2F76] outline-none transition-all placeholder:text-[#A9C0E0]"/>
+         <button type="submit" disabled={groupName.length < 3} className="w-full py-3.5 bg-[#0E2F76] hover:bg-[#133D96] text-white font-bold rounded-2xl shadow-lg shadow-[#0E2F76]/20 disabled:opacity-40 transition-all active:scale-98">Entrar al Grupo</button>
        </form>
     </div>
   );
@@ -109,15 +110,24 @@ const LoginPage = ({ onLogin }: { onLogin: () => void }) => {
     catch (err: any) { console.error(err); setError('Error al iniciar como invitado.'); setLoading(false); }
   };
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 p-4 transition-colors">
-      <div className="w-full max-w-md bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 text-center">
-        <div className="mb-6 flex justify-center"><div className="bg-blue-100 dark:bg-blue-900 p-4 rounded-full"><DollarSign size={48} className="text-blue-600 dark:text-blue-400" /></div></div>
-        <h1 className="text-3xl font-bold mb-2 text-gray-800 dark:text-white">Mis Finanzas</h1>
-        <p className="text-gray-500 dark:text-gray-400 mb-8">Gestiona tu presupuesto inteligentemente</p>
-        {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm">{error}</div>}
-        <div className="space-y-3">
-            <button onClick={handleGoogleLogin} disabled={loading} className="w-full py-3 px-4 bg-white hover:bg-gray-50 text-gray-700 font-semibold rounded-xl border border-gray-300 shadow-sm flex items-center justify-center gap-3 transition-all hover:shadow-md disabled:opacity-50">{loading ? <span>Cargando...</span> : <><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5 mr-2" alt="google" /><span>Ingresar con Google</span></>}</button>
-            <button onClick={handleGuestLogin} disabled={loading} className="w-full py-3 px-4 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-200 font-semibold rounded-xl flex items-center justify-center gap-3 transition-all disabled:opacity-50"><UserCircle size={20} /><span>Continuar como Invitado</span></button>
+    <div className="flex flex-col items-center justify-center min-h-[85vh] p-4 transition-colors font-sans">
+      <div className="w-full max-w-md bg-white dark:bg-[#0F1A30] p-8 sm:p-10 rounded-3xl shadow-2xl border border-[#A9C0E0]/30 dark:border-[#1E2D4A] text-center backdrop-blur-xl">
+        <div className="mb-6 flex justify-center">
+          <div className="bg-[#0E2F76] dark:bg-[#1E2D4A] p-5 rounded-2xl shadow-lg shadow-[#0E2F76]/20">
+            <DollarSign size={44} className="text-[#F4FEFF]" />
+          </div>
+        </div>
+        <h1 className="text-3xl font-extrabold mb-2 text-[#0E2F76] dark:text-[#F4FEFF] tracking-tight">Mis Finanzas</h1>
+        <p className="text-sm text-[#0E2F76]/70 dark:text-[#A9C0E0] mb-8 font-medium">Gestiona tu presupuesto inteligentemente</p>
+        {error && <div className="mb-6 p-3.5 bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 rounded-xl text-sm font-semibold">{error}</div>}
+        <div className="space-y-3.5">
+            <button onClick={handleGoogleLogin} disabled={loading} className="w-full py-4 px-5 bg-white dark:bg-[#080D1A] hover:bg-[#F4FEFF] text-[#0E2F76] dark:text-[#F4FEFF] font-bold rounded-2xl border border-[#A9C0E0]/40 dark:border-[#1E2D4A] shadow-sm flex items-center justify-center gap-3 transition-all hover:shadow-md disabled:opacity-50 active:scale-98">
+              {loading ? <span>Cargando...</span> : <><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5 mr-1" alt="google" /><span>Ingresar con Google</span></>}
+            </button>
+            <button onClick={handleGuestLogin} disabled={loading} className="w-full py-4 px-5 bg-[#A9C0E0]/20 hover:bg-[#A9C0E0]/30 dark:bg-[#1E2D4A]/50 dark:hover:bg-[#1E2D4A] text-[#0E2F76] dark:text-[#A9C0E0] font-bold rounded-2xl flex items-center justify-center gap-2.5 transition-all disabled:opacity-50 active:scale-98">
+              <UserCircle size={22} />
+              <span>Continuar como Invitado</span>
+            </button>
         </div>
       </div>
     </div>
@@ -164,35 +174,35 @@ const HomePage = ({ user, appData, onSave, groupId, onOpenGroupModal, onSetupPin
   const handleSalaryChange = (e: React.ChangeEvent<HTMLInputElement>) => { setSalary(handleMoneyInput(e.target.value)); };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[80vh]">
-      <div className="w-full max-w-md bg-white dark:bg-dark-card p-8 rounded-2xl shadow-xl border dark:border-gray-700">
-        <div className="flex items-center justify-between mb-6 pb-6 border-b border-gray-100 dark:border-gray-700">
+    <div className="flex flex-col items-center justify-center min-h-[75vh]">
+      <div className="w-full max-w-md bg-white dark:bg-[#0F1A30] p-8 rounded-3xl shadow-xl border border-[#A9C0E0]/30 dark:border-[#1E2D4A]">
+        <div className="flex items-center justify-between mb-6 pb-6 border-b border-[#A9C0E0]/20 dark:border-[#1E2D4A]">
             <div className="flex items-center gap-3">
-                {photoURL ? <img src={photoURL} className="w-10 h-10 rounded-full border-2 border-blue-500" alt="profile" /> : <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center border-2 border-gray-300 dark:border-gray-600"><User size={20} className="text-gray-500 dark:text-gray-300" /></div>}
-                <div className="text-left"><p className="text-xs text-gray-500 dark:text-gray-400">Hola,</p><p className="text-sm font-bold text-gray-800 dark:text-white truncate max-w-[150px]">{displayName}</p></div>
+                {photoURL ? <img src={photoURL} className="w-11 h-11 rounded-2xl border-2 border-[#0E2F76] shadow-sm" alt="profile" /> : <div className="w-11 h-11 rounded-2xl bg-[#0E2F76] flex items-center justify-center border-2 border-[#0E2F76] shadow-sm"><User size={22} className="text-[#F4FEFF]" /></div>}
+                <div className="text-left"><p className="text-xs text-[#0E2F76]/60 dark:text-[#A9C0E0]">Hola,</p><p className="text-base font-extrabold text-[#0E2F76] dark:text-[#F4FEFF] truncate max-w-[150px]">{displayName}</p></div>
             </div>
             <div className="flex gap-2">
-                <button onClick={onSetupPin} className={`p-2 rounded-lg transition-colors ${hasPin ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`} title={hasPin ? "PIN Activado" : "Configurar PIN"}>{hasPin ? <Lock size={20} /> : <Unlock size={20} />}</button>
-                <button onClick={onOpenGroupModal} className={`p-2 rounded-lg transition-colors ${groupId ? 'bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-300' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`} title={groupId ? `Grupo: ${groupId}` : "Crear/Unirse a Grupo"}><Users size={20} /></button>
-                <button onClick={() => signOut(auth)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="Cerrar Sesión"><LogOut size={20} /></button>
+                <button onClick={onSetupPin} className={`p-2.5 rounded-xl transition-all ${hasPin ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30' : 'text-[#A9C0E0] hover:bg-[#A9C0E0]/20 dark:hover:bg-[#1E2D4A]'}`} title={hasPin ? "PIN Activado" : "Configurar PIN"}>{hasPin ? <Lock size={18} /> : <Unlock size={18} />}</button>
+                <button onClick={onOpenGroupModal} className={`p-2.5 rounded-xl transition-all ${groupId ? 'bg-[#0E2F76] text-white dark:bg-[#1E2D4A] dark:text-[#F4FEFF] shadow-sm' : 'text-[#A9C0E0] hover:bg-[#A9C0E0]/20 dark:hover:bg-[#1E2D4A]'}`} title={groupId ? `Grupo: ${groupId}` : "Crear/Unirse a Grupo"}><Users size={18} /></button>
+                <button onClick={() => signOut(auth)} className="p-2.5 text-[#A9C0E0] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-all" title="Cerrar Sesión"><LogOut size={18} /></button>
             </div>
         </div>
-        {groupId && <div className="mb-4 p-2 bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-900 rounded-lg flex items-center justify-center gap-2 text-xs font-bold text-purple-600 dark:text-purple-300"><Users size={14} /> Modo Grupo: {groupId}</div>}
-        <div className="text-center mb-8"><h2 className="text-2xl font-bold mb-2 text-gray-800 dark:text-white">Configurar Mes</h2><p className="text-gray-500 dark:text-gray-400">Selecciona fecha y sueldo</p></div>
-        <form onSubmit={handleSubmit} className="space-y-6">
+        {groupId && <div className="mb-5 p-3 bg-[#0E2F76]/10 dark:bg-[#1E2D4A]/50 border border-[#0E2F76]/20 dark:border-[#1E2D4A] rounded-2xl flex items-center justify-center gap-2 text-xs font-extrabold text-[#0E2F76] dark:text-[#A9C0E0]"><Users size={15} /> Modo Grupo: {groupId}</div>}
+        <div className="text-center mb-7"><h2 className="text-2xl font-extrabold mb-1 text-[#0E2F76] dark:text-[#F4FEFF]">Configurar Mes</h2><p className="text-xs sm:text-sm text-[#0E2F76]/70 dark:text-[#A9C0E0]">Selecciona fecha e ingresa tu sueldo</p></div>
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div className="grid grid-cols-2 gap-4">
-            <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Año</label><select value={year} onChange={(e) => setYear(Number(e.target.value))} className="w-full p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border dark:border-gray-700 dark:text-white">{YEARS.map(y => <option key={y} value={y}>{y}</option>)}</select></div>
-            <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mes</label><select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="w-full p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border dark:border-gray-700 dark:text-white">{MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}</select></div>
+            <div><label className="block text-xs font-extrabold uppercase tracking-wider text-[#0E2F76] dark:text-[#A9C0E0] mb-1.5">Año</label><select value={year} onChange={(e) => setYear(Number(e.target.value))} className="w-full p-3.5 rounded-2xl bg-[#F4FEFF] dark:bg-[#080D1A] border border-[#A9C0E0]/40 dark:border-[#1E2D4A] text-[#0E2F76] dark:text-[#F4FEFF] font-bold focus:ring-2 focus:ring-[#0E2F76] outline-none">{YEARS.map(y => <option key={y} value={y}>{y}</option>)}</select></div>
+            <div><label className="block text-xs font-extrabold uppercase tracking-wider text-[#0E2F76] dark:text-[#A9C0E0] mb-1.5">Mes</label><select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="w-full p-3.5 rounded-2xl bg-[#F4FEFF] dark:bg-[#080D1A] border border-[#A9C0E0]/40 dark:border-[#1E2D4A] text-[#0E2F76] dark:text-[#F4FEFF] font-bold focus:ring-2 focus:ring-[#0E2F76] outline-none">{MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}</select></div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sueldo Mensual</label>
+            <label className="block text-xs font-extrabold uppercase tracking-wider text-[#0E2F76] dark:text-[#A9C0E0] mb-1.5">Sueldo Mensual</label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-              <input type={showSalary ? "text" : "password"} value={salary} onChange={handleSalaryChange} className="w-full p-3 pl-8 pr-12 rounded-lg bg-gray-50 dark:bg-gray-800 border dark:border-gray-700 dark:text-white text-lg font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="0" required/>
-              <button type="button" onClick={toggleShowSalary} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">{showSalary ? <Eye size={20} /> : <EyeOff size={20} />}</button>
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#0E2F76] dark:text-[#A9C0E0] font-extrabold text-lg">$</span>
+              <input type={showSalary ? "text" : "password"} value={salary} onChange={handleSalaryChange} className="w-full p-3.5 pl-9 pr-12 rounded-2xl bg-[#F4FEFF] dark:bg-[#080D1A] border border-[#A9C0E0]/40 dark:border-[#1E2D4A] text-[#0E2F76] dark:text-[#F4FEFF] text-xl font-black focus:ring-2 focus:ring-[#0E2F76] outline-none" placeholder="0" required/>
+              <button type="button" onClick={toggleShowSalary} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#A9C0E0] hover:text-[#0E2F76] dark:hover:text-[#F4FEFF] transition-colors">{showSalary ? <Eye size={20} /> : <EyeOff size={20} />}</button>
             </div>
           </div>
-          <button type="submit" className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg transform transition hover:scale-[1.02] active:scale-95">Continuar</button>
+          <button type="submit" className="w-full py-4 bg-[#0E2F76] hover:bg-[#133D96] text-white font-extrabold text-base rounded-2xl shadow-lg shadow-[#0E2F76]/25 transform transition hover:scale-[1.01] active:scale-95">Continuar</button>
         </form>
       </div>
     </div>
@@ -236,17 +246,16 @@ const BudgetPage = ({ appData, onSave, groupId }: { appData: AppData, onSave: (d
   const handleAddExtra = (fid: string, d: string, a: number) => { updateMonth({ extras: { ...monthData.extras, [fid]: [...(monthData.extras[fid] || []), { id: `e_${Date.now()}`, description: d, amount: a, fieldId: fid }] } }); };
   const handleDeleteExtra = (fid: string, eid: string) => { updateMonth({ extras: { ...monthData.extras, [fid]: (monthData.extras[fid] || []).filter(e => e.id !== eid) } }); };
   
-  // --- CLAVE: YA NO ACTUALIZAMOS LA ESTRUCTURA GLOBAL ---
   const handleSaveField = (uF: Field) => { 
       const newFields = monthData.fields.map(f => f.id === uF.id ? uF : f); 
-      updateMonth({ fields: newFields }); // Solo actualizamos este mes
+      updateMonth({ fields: newFields });
       setNewFieldId(null); 
   };
   
   const handleDeleteField = (fid: string) => { 
       if (window.confirm("¿Seguro que quieres eliminar este campo de ESTE MES?")) { 
           const newFields = monthData.fields.filter(f => f.id !== fid); 
-          updateMonth({ fields: newFields }); // Solo actualizamos este mes
+          updateMonth({ fields: newFields });
       } 
   };
   
@@ -254,37 +263,96 @@ const BudgetPage = ({ appData, onSave, groupId }: { appData: AppData, onSave: (d
       const newId = `f_${Date.now()}`; 
       const newField: Field = { id: newId, name: 'Nuevo Campo', percentage: 0, color: 'gray', icon: 'DollarSign', categories: [{ id: `c_${Date.now()}`, name: 'General', subcategories: [] }], type: 'standard', alertThreshold: 80 }; 
       const newFields = [...monthData.fields, newField]; 
-      updateMonth({ fields: newFields }); // Solo actualizamos este mes
+      updateMonth({ fields: newFields });
       setNewFieldId(newId); 
   };
 
-  const totalExpenses = (Object.values(monthData.expenses) as number[]).reduce((a, b) => a + b, 0) + (Object.values(monthData.extras) as { amount: number }[][]).reduce((acc, items) => acc + items.reduce((s, i) => s + i.amount, 0), 0);
+  const calculateSubTotalForField = (field: Field) => {
+    return field.categories.reduce((catAcc, cat) => {
+      const catSum = cat.subcategories.reduce((subAcc, sub) => {
+        const raw = monthData.expenses[sub.id] || 0;
+        const isHalf = sub.isHalf === true || (sub.isHalf !== false && cat.isHalf === true);
+        return subAcc + (isHalf ? raw * 0.5 : raw);
+      }, 0);
+      return catAcc + catSum;
+    }, 0);
+  };
+
+  const totalExpenses = monthData.fields.reduce((acc, field) => {
+    const subTotal = calculateSubTotalForField(field);
+    const extraTotal = (monthData.extras[field.id] || []).reduce((s, i) => s + i.amount, 0);
+    return acc + subTotal + extraTotal;
+  }, 0);
+
   const available = monthData.salary - totalExpenses;
   const totalAllocatedPercentage = monthData.fields.reduce((acc, field) => acc + field.percentage, 0);
   
-  const alerts = monthData.fields.map(field => { if (field.type === 'savings') return null; const budget = (monthData.salary * field.percentage) / 100; const subTotal = Object.keys(monthData.expenses).reduce((acc, key) => { const isFor = field.categories.some(c => c.subcategories.some(s => s.id === key)); return isFor ? acc + (monthData.expenses[key] || 0) : acc; }, 0); const extraTotal = (monthData.extras[field.id] || []).reduce((acc, item) => acc + item.amount, 0); const totalSpent = subTotal + extraTotal; const pct = budget > 0 ? (totalSpent / budget) * 100 : 0; if (pct >= (field.alertThreshold || 80)) return { fieldName: field.name, pct, isOver: pct >= 100 }; return null; }).filter(Boolean);
+  const alerts = monthData.fields.map(field => { 
+    if (field.type === 'savings') return null; 
+    const budget = (monthData.salary * field.percentage) / 100; 
+    const subTotal = calculateSubTotalForField(field);
+    const extraTotal = (monthData.extras[field.id] || []).reduce((acc, item) => acc + item.amount, 0); 
+    const totalSpent = subTotal + extraTotal; 
+    const pct = budget > 0 ? (totalSpent / budget) * 100 : 0; 
+    if (pct >= (field.alertThreshold || 80)) return { fieldName: field.name, pct, isOver: pct >= 100 }; 
+    return null; 
+  }).filter(Boolean);
   
   if (activeChart !== 'none') return <BudgetCharts fields={monthData.fields} salary={monthData.salary} expenses={monthData.expenses} extras={monthData.extras} theme={appData.theme} viewMode={activeChart} onBack={() => setActiveChart('none')} />;
 
   return (
     <div>
       {showRecurringModal && <RecurringModal items={recurringItems} onConfirm={(ids: string[]) => { const newExpenses = { ...monthData.expenses }; recurringItems.forEach(item => { if (ids.includes(item.subId)) newExpenses[item.subId] = item.amount; }); updateMonth({ expenses: newExpenses, recurringApplied: true }); setShowRecurringModal(false); }} onCancel={() => { updateMonth({ recurringApplied: true }); setShowRecurringModal(false); }} />}
-      <div className="bg-gradient-to-br from-gray-800 to-gray-900 dark:from-gray-800 dark:to-black rounded-2xl p-6 text-white shadow-xl mb-6 relative overflow-hidden">
-         <div className="absolute top-0 right-0 p-4 opacity-10"><DollarSign size={120} /></div>
+      
+      {/* Tarjeta Resumen Principal */}
+      <div className="bg-gradient-to-br from-[#101B36] to-[#1C2D57] dark:from-[#0A1122] dark:to-[#17233F] rounded-3xl p-6 sm:p-8 text-[#E5E9F0] card-shadow mb-6 relative overflow-hidden border border-black/5 dark:border-white/5">
+         <div className="absolute -top-10 -right-10 p-4 opacity-10 pointer-events-none"><DollarSign size={220} strokeWidth={1.75} /></div>
          <div className="relative z-10">
-             <div className="flex items-center justify-between mb-4">
-                 <div className="flex items-center gap-2"><button onClick={() => navigate('/')} className="text-gray-300 hover:text-white"><ArrowLeft size={24} /></button><h2 className="text-2xl font-bold">{MONTHS[month - 1]} {year}</h2></div>
-                 <button onClick={toggleShowBalance} className="p-2 text-gray-300 hover:text-white hover:bg-white/10 rounded-full transition-colors">{showBalance ? <Eye size={20} /> : <EyeOff size={20} />}</button>
+             <div className="flex items-center justify-between mb-6">
+                 <div className="flex items-center gap-3">
+                   <button onClick={() => navigate('/')} className="p-2.5 text-[#8B96A8] hover:text-white bg-white/10 hover:bg-white/20 rounded-2xl transition-all active:scale-95"><ArrowLeft size={20} strokeWidth={1.75} /></button>
+                   <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white font-sans">{MONTHS[month - 1]} {year}</h2>
+                 </div>
+                 <button onClick={toggleShowBalance} className="p-2.5 text-[#8B96A8] hover:text-white bg-white/10 hover:bg-white/20 rounded-2xl transition-all active:scale-95">{showBalance ? <Eye size={20} strokeWidth={1.75} /> : <EyeOff size={20} strokeWidth={1.75} />}</button>
              </div>
-             <div className="grid grid-cols-2 gap-4 mb-6"><div className="bg-white/10 rounded-xl p-4 backdrop-blur-sm"><div className="text-xs text-blue-300 uppercase font-bold mb-1">Ingresos</div><div className="text-xl font-mono font-bold">{showBalance ? `$${formatNumberDisplay(monthData.salary)}` : '****'}</div></div><div className="bg-white/10 rounded-xl p-4 backdrop-blur-sm"><div className="text-xs text-purple-300 uppercase font-bold mb-1">Gastos</div><div className="text-xl font-mono font-bold">${formatNumberDisplay(totalExpenses)}</div></div></div>
-             <div className="flex justify-between items-end"><div className="text-center"><div className="text-sm text-gray-400 uppercase mb-1">Disponible Global</div><div className={`text-3xl font-bold font-mono ${available < 0 ? 'text-red-400' : 'text-green-400'}`}>{showBalance ? `$${formatNumberDisplay(available)}` : '****'}</div></div><div className={`text-xs px-2 py-1 rounded ${totalAllocatedPercentage > 100 ? 'bg-red-500 text-white' : 'bg-green-900/50 text-green-400'}`}>Asignado: {totalAllocatedPercentage}%</div></div>
+             
+             <div className="grid grid-cols-2 gap-4 mb-5">
+               <div className="bg-white/10 dark:bg-black/25 rounded-2xl p-4 border border-white/10 backdrop-blur-md">
+                 <div className="text-xs text-[#8B96A8] uppercase font-bold tracking-widest mb-1.5 font-sans">Ingresos</div>
+                 <div className="text-xl sm:text-2xl font-mono tabular-nums font-bold tracking-tight text-white">{showBalance ? `$${formatNumberDisplay(monthData.salary)}` : '****'}</div>
+               </div>
+               <div className="bg-white/10 dark:bg-black/25 rounded-2xl p-4 border border-white/10 backdrop-blur-md">
+                 <div className="text-xs text-[#8B96A8] uppercase font-bold tracking-widest mb-1.5 font-sans">Gastos</div>
+                 <div className="text-xl sm:text-2xl font-mono tabular-nums font-bold tracking-tight text-white">${formatNumberDisplay(totalExpenses)}</div>
+               </div>
+             </div>
+
+             <div className="flex justify-between items-end bg-black/25 p-4 sm:p-5 rounded-2xl border border-white/10 backdrop-blur-md">
+               <div className="text-left">
+                 <div className="text-xs text-[#8B96A8] uppercase font-bold tracking-widest mb-1.5 font-sans">Disponible Global</div>
+                 <div className={`text-2xl sm:text-3xl font-bold font-mono tabular-nums tracking-tight ${available < 0 ? 'text-[#F87171]' : 'text-[#34D399]'}`}>{showBalance ? `$${formatNumberDisplay(available)}` : '****'}</div>
+               </div>
+               <div className={`text-xs font-bold px-3.5 py-1.5 rounded-xl border ${totalAllocatedPercentage > 100 ? 'bg-[#EF4444]/20 text-[#F87171] border-[#EF4444]/30' : 'bg-[#10B981]/20 text-[#34D399] border-[#10B981]/30'}`}>Asignado: {totalAllocatedPercentage}%</div>
+             </div>
          </div>
       </div>
-      {alerts.length > 0 && <div className="mb-6 space-y-2">{alerts.map((alert, idx) => <div key={idx} className={`p-3 rounded-lg flex items-center gap-2 text-sm font-bold ${alert?.isOver ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-yellow-100 text-yellow-700 border border-yellow-300'}`}><AlertTriangle size={18} /><span>{alert?.fieldName}: {alert?.isOver ? '¡Presupuesto Excedido!' : `Alcanzó el ${alert?.pct.toFixed(0)}%`}</span></div>)}</div>}
-      <div className="grid grid-cols-2 gap-4 mb-6"><button onClick={() => setActiveChart('pie')} className="bg-white dark:bg-dark-card p-4 rounded-xl shadow hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border dark:border-gray-700 flex flex-col items-center justify-center gap-2 text-gray-700 dark:text-gray-300"><PieIcon size={32} className="text-blue-500"/><span className="font-bold text-sm">Distribución de Gastos</span></button><button onClick={() => setActiveChart('bar')} className="bg-white dark:bg-dark-card p-4 rounded-xl shadow hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border dark:border-gray-700 flex flex-col items-center justify-center gap-2 text-gray-700 dark:text-gray-300"><BarIcon size={32} className="text-purple-500"/><span className="font-bold text-sm">Presupuesto vs Realidad</span></button></div>
+
+      {alerts.length > 0 && <div className="mb-6 space-y-2">{alerts.map((alert, idx) => <div key={idx} className={`p-4 rounded-2xl flex items-center gap-3 text-sm font-bold card-shadow border ${alert?.isOver ? 'bg-[#FEF2F2] dark:bg-[#EF4444]/15 text-[#EF4444] dark:text-[#F87171] border-[#EF4444]/30' : 'bg-[#FFFBEB] dark:bg-[#F59E0B]/15 text-[#F59E0B] dark:text-[#FBBF24] border-[#F59E0B]/30'}`}><AlertTriangle size={20} strokeWidth={1.75} /><span>{alert?.fieldName}: {alert?.isOver ? '¡Presupuesto Excedido!' : `Alcanzó el ${alert?.pct.toFixed(0)}%`}</span></div>)}</div>}
+      
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <button onClick={() => setActiveChart('pie')} className="bg-white dark:bg-[#131B2E] p-4 sm:p-5 rounded-2xl card-shadow card-shadow-hover transition-all border border-black/5 dark:border-white/5 flex flex-col items-center justify-center gap-2.5 text-[#0F172A] dark:text-[#E5E9F0] group active:scale-98 cursor-pointer">
+          <div className="w-11 h-11 rounded-xl bg-[#EEF0FF] dark:bg-[#6366F1]/15 text-[#6366F1] dark:text-[#818CF8] flex items-center justify-center group-hover:scale-110 transition-transform"><PieIcon size={22} strokeWidth={1.75} /></div>
+          <span className="font-bold text-xs sm:text-sm tracking-tight">Distribución de Gastos</span>
+        </button>
+        <button onClick={() => setActiveChart('bar')} className="bg-white dark:bg-[#131B2E] p-4 sm:p-5 rounded-2xl card-shadow card-shadow-hover transition-all border border-black/5 dark:border-white/5 flex flex-col items-center justify-center gap-2.5 text-[#0F172A] dark:text-[#E5E9F0] group active:scale-98 cursor-pointer">
+          <div className="w-11 h-11 rounded-xl bg-[#EEF0FF] dark:bg-[#6366F1]/15 text-[#6366F1] dark:text-[#818CF8] flex items-center justify-center group-hover:scale-110 transition-transform"><BarIcon size={22} strokeWidth={1.75} /></div>
+          <span className="font-bold text-xs sm:text-sm tracking-tight">Presupuesto vs Realidad</span>
+        </button>
+      </div>
+
       <div className="flex flex-col gap-6 pb-24">
           {monthData.fields.map(field => (<FieldAccordion key={field.id} field={field} salary={monthData.salary} expenses={monthData.expenses} expensesUsd={monthData.expensesUsd || {}} paidStatus={monthData.paidStatus} extras={monthData.extras} defaultEditing={field.id === newFieldId} totalAllocatedPercentage={totalAllocatedPercentage} onUpdateExpense={handleUpdateExpense} onUpdateExpenseUsd={handleUpdateExpenseUsd} onTogglePaid={handleTogglePaid} onAddExtra={handleAddExtra} onDeleteExtra={handleDeleteExtra} onSaveField={handleSaveField} onDeleteField={handleDeleteField} />))}
-          <div className="py-6 px-2 flex justify-center z-50 relative"><button onClick={handleAddNewField} className="w-full max-w-3xl bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl shadow-lg flex items-center justify-center gap-2 transition-transform hover:scale-[1.01] active:scale-95"><Plus size={24} /> Crear Nuevo Campo</button></div>
+          <div className="py-4 px-2 flex justify-center z-50 relative"><button onClick={handleAddNewField} className="w-full max-w-3xl bg-[#6366F1] hover:bg-[#4F46E5] text-white font-bold py-4 rounded-2xl shadow-lg shadow-[#6366F1]/20 flex items-center justify-center gap-2 transition-transform hover:scale-[1.01] active:scale-95"><Plus size={22} strokeWidth={1.75} /> Crear Nuevo Campo</button></div>
           <div ref={bottomRef} style={{height: '20px'}}></div>
       </div>
     </div>
