@@ -305,34 +305,34 @@ const BudgetPage = ({ appData, onSave, groupId }: { appData: AppData, onSave: (d
       {showRecurringModal && <RecurringModal items={recurringItems} onConfirm={(ids: string[]) => { const newExpenses = { ...monthData.expenses }; recurringItems.forEach(item => { if (ids.includes(item.subId)) newExpenses[item.subId] = item.amount; }); updateMonth({ expenses: newExpenses, recurringApplied: true }); setShowRecurringModal(false); }} onCancel={() => { updateMonth({ recurringApplied: true }); setShowRecurringModal(false); }} />}
       
       {/* Tarjeta Resumen Principal */}
-      <div className="bg-gradient-to-br from-[#101B36] to-[#1C2D57] dark:from-[#0A1122] dark:to-[#17233F] rounded-3xl p-6 sm:p-8 text-[#E5E9F0] card-shadow mb-6 relative overflow-hidden border border-black/5 dark:border-white/5">
+      <div className="bg-gradient-to-br from-[#101B36] to-[#1C2D57] dark:from-[#0A1122] dark:to-[#17233F] rounded-3xl p-4 sm:p-8 text-[#E5E9F0] card-shadow mb-6 relative overflow-hidden border border-black/5 dark:border-white/5">
          <div className="absolute -top-10 -right-10 p-4 opacity-10 pointer-events-none"><DollarSign size={220} strokeWidth={1.75} /></div>
          <div className="relative z-10">
-             <div className="flex items-center justify-between mb-6">
+             <div className="flex items-center justify-between mb-5 sm:mb-6">
                  <div className="flex items-center gap-3">
                    <button onClick={() => navigate('/')} className="p-2.5 text-[#8B96A8] hover:text-white bg-white/10 hover:bg-white/20 rounded-2xl transition-all active:scale-95"><ArrowLeft size={20} strokeWidth={1.75} /></button>
-                   <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white font-sans">{MONTHS[month - 1]} {year}</h2>
+                   <h2 className="text-xl sm:text-3xl font-bold tracking-tight text-white font-sans">{MONTHS[month - 1]} {year}</h2>
                  </div>
                  <button onClick={toggleShowBalance} className="p-2.5 text-[#8B96A8] hover:text-white bg-white/10 hover:bg-white/20 rounded-2xl transition-all active:scale-95">{showBalance ? <Eye size={20} strokeWidth={1.75} /> : <EyeOff size={20} strokeWidth={1.75} />}</button>
              </div>
              
-             <div className="grid grid-cols-2 gap-4 mb-5">
-               <div className="bg-white/10 dark:bg-black/25 rounded-2xl p-4 border border-white/10 backdrop-blur-md">
-                 <div className="text-xs text-[#8B96A8] uppercase font-bold tracking-widest mb-1.5 font-sans">Ingresos</div>
-                 <div className="text-xl sm:text-2xl font-mono tabular-nums font-bold tracking-tight text-white">{showBalance ? `$${formatNumberDisplay(monthData.salary)}` : '****'}</div>
+             <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-5">
+               <div className="bg-white/10 dark:bg-black/25 rounded-2xl p-3 sm:p-4 border border-white/10 backdrop-blur-md overflow-hidden">
+                 <div className="text-[10px] sm:text-xs text-[#8B96A8] uppercase font-bold tracking-widest mb-1 font-sans">Ingresos</div>
+                 <div className="text-base sm:text-xl lg:text-2xl font-mono tabular-nums font-bold tracking-tight text-white truncate">{showBalance ? `$${formatNumberDisplay(monthData.salary)}` : '****'}</div>
                </div>
-               <div className="bg-white/10 dark:bg-black/25 rounded-2xl p-4 border border-white/10 backdrop-blur-md">
-                 <div className="text-xs text-[#8B96A8] uppercase font-bold tracking-widest mb-1.5 font-sans">Gastos</div>
-                 <div className="text-xl sm:text-2xl font-mono tabular-nums font-bold tracking-tight text-white">${formatNumberDisplay(totalExpenses)}</div>
+               <div className="bg-white/10 dark:bg-black/25 rounded-2xl p-3 sm:p-4 border border-white/10 backdrop-blur-md overflow-hidden">
+                 <div className="text-[10px] sm:text-xs text-[#8B96A8] uppercase font-bold tracking-widest mb-1 font-sans">Gastos</div>
+                 <div className="text-base sm:text-xl lg:text-2xl font-mono tabular-nums font-bold tracking-tight text-white truncate">${formatNumberDisplay(totalExpenses)}</div>
                </div>
              </div>
 
-             <div className="flex justify-between items-end bg-black/25 p-4 sm:p-5 rounded-2xl border border-white/10 backdrop-blur-md">
-               <div className="text-left">
-                 <div className="text-xs text-[#8B96A8] uppercase font-bold tracking-widest mb-1.5 font-sans">Disponible Global</div>
-                 <div className={`text-2xl sm:text-3xl font-bold font-mono tabular-nums tracking-tight ${available < 0 ? 'text-[#F87171]' : 'text-[#34D399]'}`}>{showBalance ? `$${formatNumberDisplay(available)}` : '****'}</div>
+             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3 bg-black/25 p-3.5 sm:p-5 rounded-2xl border border-white/10 backdrop-blur-md">
+               <div className="text-left w-full sm:w-auto min-w-0">
+                 <div className="text-[10px] sm:text-xs text-[#8B96A8] uppercase font-bold tracking-widest mb-1 font-sans">Disponible Global</div>
+                 <div className={`text-lg sm:text-2xl lg:text-3xl font-bold font-mono tabular-nums tracking-tight truncate ${available < 0 ? 'text-[#F87171]' : 'text-[#34D399]'}`}>{showBalance ? `$${formatNumberDisplay(available)}` : '****'}</div>
                </div>
-               <div className={`text-xs font-bold px-3.5 py-1.5 rounded-xl border ${totalAllocatedPercentage > 100 ? 'bg-[#EF4444]/20 text-[#F87171] border-[#EF4444]/30' : 'bg-[#10B981]/20 text-[#34D399] border-[#10B981]/30'}`}>Asignado: {totalAllocatedPercentage}%</div>
+               <div className={`text-xs font-bold px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-xl border shrink-0 ${totalAllocatedPercentage > 100 ? 'bg-[#EF4444]/20 text-[#F87171] border-[#EF4444]/30' : 'bg-[#10B981]/20 text-[#34D399] border-[#10B981]/30'}`}>Asignado: {totalAllocatedPercentage}%</div>
              </div>
          </div>
       </div>

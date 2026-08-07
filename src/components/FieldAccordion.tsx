@@ -444,27 +444,27 @@ const FieldAccordion: React.FC<FieldAccordionProps> = ({
                 }, 0);
 
                 return (
-                  <div key={cat.id} className="bg-white dark:bg-[#131B2E] border border-black/5 dark:border-white/5 rounded-2xl p-4 card-shadow">
+                  <div key={cat.id} className="bg-white dark:bg-[#131B2E] border border-black/5 dark:border-white/5 rounded-2xl p-3 sm:p-4 card-shadow">
                     
                     {/* Encabezado Desplegable / Contraíble de la Categoría */}
                     <div 
                       onClick={() => toggleCategoryCollapse(cat.id)}
-                      className="flex justify-between items-center cursor-pointer select-none py-1 px-1 group"
+                      className="flex flex-wrap sm:flex-nowrap justify-between items-center cursor-pointer select-none py-1.5 px-1 group gap-2"
                     >
-                      <div className="flex items-center gap-2">
-                        <button className="text-[#64748B] dark:text-[#8B96A8] p-1 rounded-lg group-hover:bg-[#E2E8F0]/50 transition-all">
+                      <div className="flex flex-wrap items-center gap-1.5 min-w-0 flex-1">
+                        <button className="text-[#64748B] dark:text-[#8B96A8] p-1 rounded-lg group-hover:bg-[#E2E8F0]/50 transition-all shrink-0">
                           {isCatCollapsed ? <Lucide.ChevronRight size={18} strokeWidth={1.75} /> : <ChevronDown size={18} strokeWidth={1.75} />}
                         </button>
                         <h4 className="text-xs font-bold text-[#0F172A] dark:text-[#E5E9F0] uppercase tracking-wider">{cat.name}</h4>
                         {cat.isHalf && (
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${fieldStyle.badgeClass}`}>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 ${fieldStyle.badgeClass}`}>
                             50% Compartido
                           </span>
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono tabular-nums font-bold text-[#64748B] dark:text-[#8B96A8]">
+                      <div className="flex items-center gap-1.5 ml-auto shrink-0 text-right">
+                        <span className="text-xs sm:text-sm font-mono tabular-nums font-bold text-[#64748B] dark:text-[#8B96A8] whitespace-nowrap">
                           Subtotal: ${formatNumberDisplay(catTotal)}
                         </span>
                       </div>
@@ -483,39 +483,39 @@ const FieldAccordion: React.FC<FieldAccordionProps> = ({
                            const displayValueUsd = localInputs[`usd_${sub.id}`] !== undefined ? localInputs[`usd_${sub.id}`] : (expensesUsd[sub.id] ? formatNumberDisplay(expensesUsd[sub.id]) : '');
                            
                            return (
-                            <div key={sub.id} className="group bg-[#F4F7FB]/50 dark:bg-[#0B1120]/50 rounded-2xl p-3.5 border border-[#E2E8F0]/60 dark:border-[#22304A]/60 flex items-center gap-3.5 transition-all hover:bg-white dark:hover:bg-[#131B2E]">
-                              <button onClick={() => onTogglePaid(sub.id, !isPaid)} className={`w-7 h-7 rounded-xl flex items-center justify-center border-2 transition-all ${isPaid ? 'bg-[#10B981] border-[#10B981] text-white shadow-md shadow-[#10B981]/20 scale-105' : 'border-[#CBD5E1] dark:border-[#22304A] text-transparent hover:border-[#6366F1]'}`}><Check size={14} strokeWidth={2.5} /></button>
+                            <div key={sub.id} className="group bg-[#F4F7FB]/50 dark:bg-[#0B1120]/50 rounded-2xl p-2.5 sm:p-3.5 border border-[#E2E8F0]/60 dark:border-[#22304A]/60 flex items-center gap-2.5 sm:gap-3.5 transition-all hover:bg-white dark:hover:bg-[#131B2E]">
+                              <button onClick={() => onTogglePaid(sub.id, !isPaid)} className={`w-7 h-7 rounded-xl flex items-center justify-center border-2 shrink-0 transition-all ${isPaid ? 'bg-[#10B981] border-[#10B981] text-white shadow-md shadow-[#10B981]/20 scale-105' : 'border-[#CBD5E1] dark:border-[#22304A] text-transparent hover:border-[#6366F1]'}`}><Check size={14} strokeWidth={2.5} /></button>
                               <div className="flex-1 min-w-0">
                                 <div className="flex justify-between items-baseline flex-wrap gap-1">
-                                  <div className="flex items-center gap-2 truncate pr-1">
-                                    <label className="text-sm font-bold text-[#0F172A] dark:text-[#E5E9F0] truncate">{sub.name}</label>
+                                  <div className="flex items-center gap-1.5 truncate pr-1">
+                                    <label className="text-xs sm:text-sm font-bold text-[#0F172A] dark:text-[#E5E9F0] truncate">{sub.name}</label>
                                     {isSubHalf && (
-                                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${fieldStyle.badgeClass}`} title="Importe contabilizado al 50%">
+                                      <span className={`text-[9px] sm:text-[10px] font-bold px-1.5 py-0.2 rounded-md ${fieldStyle.badgeClass}`} title="Importe contabilizado al 50%">
                                         50%
                                       </span>
                                     )}
                                   </div>
                                   {(sub.recurringAmount || 0) > 0 && (
-                                    <span className="text-[10px] font-bold text-[#64748B] dark:text-[#8B96A8] bg-[#E2E8F0]/50 dark:bg-[#22304A]/50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                    <span className="text-[9px] sm:text-[10px] font-bold text-[#64748B] dark:text-[#8B96A8] bg-[#E2E8F0]/50 dark:bg-[#22304A]/50 px-1.5 py-0.5 rounded-full flex items-center gap-1">
                                       <RefreshCw size={9} strokeWidth={1.75}/> Auto
                                     </span>
                                   )}
                                 </div>
-                                <div className="relative mt-1 flex items-baseline justify-between">
-                                  <div className="relative flex-1">
-                                    <span className="absolute left-0 top-1/2 -translate-y-1/2 text-[#64748B] dark:text-[#8B96A8] text-sm font-bold font-mono pl-1">$</span>
-                                    <input type="text" value={displayValue} onChange={(e) => handleInputChange(sub.id, e.target.value)} onBlur={() => handleBlur(sub.id)} placeholder="0" className="w-full bg-transparent border-none p-0 pl-5 text-base font-mono tabular-nums font-bold text-[#0F172A] dark:text-[#E5E9F0] placeholder:text-[#64748B]/40 focus:ring-0 focus:outline-none"/>
+                                <div className="relative mt-0.5 flex items-baseline justify-between flex-wrap gap-x-2">
+                                  <div className="relative flex-1 min-w-[100px]">
+                                    <span className="absolute left-0 top-1/2 -translate-y-1/2 text-[#64748B] dark:text-[#8B96A8] text-xs sm:text-sm font-bold font-mono pl-0.5">$</span>
+                                    <input type="text" value={displayValue} onChange={(e) => handleInputChange(sub.id, e.target.value)} onBlur={() => handleBlur(sub.id)} placeholder="0" className="w-full bg-transparent border-none p-0 pl-4 text-xs sm:text-sm font-mono tabular-nums font-bold text-[#0F172A] dark:text-[#E5E9F0] placeholder:text-[#64748B]/40 focus:ring-0 focus:outline-none"/>
                                   </div>
                                   {isSubHalf && rawNum > 0 && (
-                                    <span className="text-xs font-mono tabular-nums font-bold text-[#6366F1] dark:text-[#818CF8] ml-2">
+                                    <span className="text-[10px] sm:text-xs font-mono tabular-nums font-bold text-[#6366F1] dark:text-[#818CF8] whitespace-nowrap">
                                       (cuenta: ${formatNumberDisplay(effectiveNum)})
                                     </span>
                                   )}
                                 </div>
                               </div>
-                              {field.id === 'f_investment' && ( <div className="w-24 ml-2 pl-3 border-l border-[#E2E8F0] dark:border-[#22304A]"><div className="flex justify-between items-baseline"><label className="text-[10px] font-bold text-[#10B981] dark:text-[#34D399] tracking-wide">USD</label></div><div className="relative mt-1"><span className="absolute left-0 top-1/2 -translate-y-1/2 text-[#64748B] dark:text-[#8B96A8] text-xs font-bold font-mono">US$</span><input type="text" value={displayValueUsd} onChange={(e) => handleInputChange(sub.id, e.target.value, true)} onBlur={() => handleBlur(sub.id, true)} placeholder="0" className="w-full bg-transparent border-none p-0 pl-7 text-sm font-mono tabular-nums font-bold text-[#0F172A] dark:text-[#E5E9F0] placeholder:text-[#64748B]/40 focus:outline-none"/></div></div>)}
+                              {field.id === 'f_investment' && ( <div className="w-20 sm:w-24 ml-1 sm:ml-2 pl-2 sm:pl-3 border-l border-[#E2E8F0] dark:border-[#22304A] shrink-0"><div className="flex justify-between items-baseline"><label className="text-[9px] sm:text-[10px] font-bold text-[#10B981] dark:text-[#34D399] tracking-wide">USD</label></div><div className="relative mt-0.5"><span className="absolute left-0 top-1/2 -translate-y-1/2 text-[#64748B] dark:text-[#8B96A8] text-[10px] sm:text-xs font-bold font-mono">US$</span><input type="text" value={displayValueUsd} onChange={(e) => handleInputChange(sub.id, e.target.value, true)} onBlur={() => handleBlur(sub.id, true)} placeholder="0" className="w-full bg-transparent border-none p-0 pl-6 sm:pl-7 text-xs sm:text-sm font-mono tabular-nums font-bold text-[#0F172A] dark:text-[#E5E9F0] placeholder:text-[#64748B]/40 focus:outline-none"/></div></div>)}
                             </div>
-                          );
+                           );
                         })}
                       </div>
                     )}
