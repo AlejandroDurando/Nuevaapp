@@ -51,7 +51,29 @@ const handleMoneyInput = (raw: string): string => {
     return Number(clean).toLocaleString('es-AR');
 };
 
-// --- LÓGICA DE DATOS: CORREGIDA PARA "AMNESIA TOTAL" ---
+// --- LÓGICA DE DATOS: UN MES NUEVO HEREDA LA ESTRUCTURA DEL ANTERIOR ---
+const cloneFields = (fields: Field[]): Field[] => JSON.parse(JSON.stringify(fields));
+
+// Busca la estructura (campos/categorías/subcategorías) del mes anterior más cercano.
+// Las claves son `YYYY-MM`, así que el orden alfabético es también el cronológico.
+const getInheritedFields = (appData: AppData, currentKey: string): Field[] => {
+    const monthsWithFields = Object.keys(appData.months)
+        .filter(key => (appData.months[key]?.fields?.length ?? 0) > 0)
+        .sort();
+
+    // 1. El mes anterior más cercano (salta meses que nunca se abrieron).
+    const previousKey = monthsWithFields.filter(key => key < currentKey).pop();
+    if (previousKey) return cloneFields(appData.months[previousKey].fields);
+
+    // 2. Si no hay ninguno antes (se navegó a un mes previo al primer registro),
+    // usamos el registro más antiguo para no volver a los valores de fábrica.
+    const nextKey = monthsWithFields.find(key => key > currentKey);
+    if (nextKey) return cloneFields(appData.months[nextKey].fields);
+
+    // 3. Sin ningún mes cargado todavía: valores por defecto.
+    return cloneFields(INITIAL_FIELDS);
+};
+
 const getMonthDataSafe = (appData: AppData, year: number, month: number): MonthlyData => {
     const currentKey = `${year}-${String(month).padStart(2, '0')}`;
     const currentMonth = appData.months[currentKey];
@@ -61,11 +83,9 @@ const getMonthDataSafe = (appData: AppData, year: number, month: number): Monthl
         return currentMonth;
     }
 
-    // 2. Si es un mes NUEVO, SIEMPRE usar los valores por defecto (70/20/10)
-    // Ya NO miramos el mes anterior ni la configuración global modificada.
-    // Usamos INITIAL_FIELDS directo para garantizar que nazca "limpio".
-    const freshStartFields = JSON.parse(JSON.stringify(INITIAL_FIELDS));
-
+    // 2. Si es un mes NUEVO, arrastramos la estructura del mes anterior
+    // (campos, porcentajes, categorías y subcategorías) pero NO sus importes:
+    // gastos, pagos y extras arrancan vacíos.
     return { 
         salary: 0, 
         expenses: {}, 
@@ -73,7 +93,7 @@ const getMonthDataSafe = (appData: AppData, year: number, month: number): Monthl
         paidStatus: {}, 
         extras: {},
         ...currentMonth, // Mantiene gastos si ya existían
-        fields: freshStartFields 
+        fields: getInheritedFields(appData, currentKey)
     };
 };
 
