@@ -10,7 +10,7 @@ import PinLock from './components/PinLock';
 import { YEARS, MONTHS, INITIAL_FIELDS } from './constants';
 import { fetchAppData, saveAppData } from './services/storageService';
 import { Field, AppData, MonthlyData } from './types';
-import { ArrowLeft, Plus, DollarSign, AlertTriangle, PieChart as PieIcon, BarChart as BarIcon, Eye, EyeOff, LogOut, User, UserCircle, Users, Lock, Unlock, X, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Plus, DollarSign, AlertTriangle, PieChart as PieIcon, BarChart as BarIcon, Eye, EyeOff, LogOut, User, UserCircle, Users, Lock, Unlock, X, CheckCircle, History } from 'lucide-react';
 import { auth } from './firebase'; 
 import { signInWithPopup, signInAnonymously, GoogleAuthProvider, signOut, onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 
@@ -54,20 +54,32 @@ const handleMoneyInput = (raw: string): string => {
 // --- LÓGICA DE DATOS: UN MES NUEVO HEREDA LA ESTRUCTURA DEL ANTERIOR ---
 const cloneFields = (fields: Field[]): Field[] => JSON.parse(JSON.stringify(fields));
 
-// Busca la estructura (campos/categorías/subcategorías) del mes anterior más cercano.
+// Meses que tienen estructura cargada, en orden cronológico.
 // Las claves son `YYYY-MM`, así que el orden alfabético es también el cronológico.
-const getInheritedFields = (appData: AppData, currentKey: string): Field[] => {
-    const monthsWithFields = Object.keys(appData.months)
+const getMonthsWithFields = (appData: AppData): string[] =>
+    Object.keys(appData.months)
         .filter(key => (appData.months[key]?.fields?.length ?? 0) > 0)
         .sort();
 
-    // 1. El mes anterior más cercano (salta meses que nunca se abrieron).
-    const previousKey = monthsWithFields.filter(key => key < currentKey).pop();
+// El mes anterior más cercano con datos (salta meses que nunca se abrieron).
+const findPreviousMonthKey = (appData: AppData, currentKey: string): string | null =>
+    getMonthsWithFields(appData).filter(key => key < currentKey).pop() ?? null;
+
+// Etiqueta legible para una clave `YYYY-MM` (ej: "Agosto 2025").
+const formatMonthKey = (key: string): string => {
+    const [keyYear, keyMonth] = key.split('-');
+    return `${MONTHS[Number(keyMonth) - 1]} ${keyYear}`;
+};
+
+// Busca la estructura (campos/categorías/subcategorías) que hereda un mes nuevo.
+const getInheritedFields = (appData: AppData, currentKey: string): Field[] => {
+    // 1. El mes anterior más cercano.
+    const previousKey = findPreviousMonthKey(appData, currentKey);
     if (previousKey) return cloneFields(appData.months[previousKey].fields);
 
     // 2. Si no hay ninguno antes (se navegó a un mes previo al primer registro),
     // usamos el registro más antiguo para no volver a los valores de fábrica.
-    const nextKey = monthsWithFields.find(key => key > currentKey);
+    const nextKey = getMonthsWithFields(appData).find(key => key > currentKey);
     if (nextKey) return cloneFields(appData.months[nextKey].fields);
 
     // 3. Sin ningún mes cargado todavía: valores por defecto.
@@ -279,6 +291,16 @@ const BudgetPage = ({ appData, onSave, groupId }: { appData: AppData, onSave: (d
       } 
   };
   
+  // Permite re-sincronizar un mes que ya quedó guardado con otra estructura
+  // (por ejemplo, meses abiertos antes de que existiera la herencia automática).
+  const previousMonthKey = findPreviousMonthKey(appData, monthKey);
+  const handleImportPreviousMonth = () => {
+      if (!previousMonthKey) return;
+      const label = formatMonthKey(previousMonthKey);
+      if (!window.confirm(`¿Traer la estructura de ${label}?\n\nSe reemplazarán los campos, categorías y subcategorías de este mes. Los importes que ya cargaste se conservan solo en las subcategorías que existan en ambos meses.`)) return;
+      updateMonth({ fields: cloneFields(appData.months[previousMonthKey].fields) });
+  };
+
   const handleAddNewField = () => { 
       const newId = `f_${Date.now()}`; 
       const newField: Field = { id: newId, name: 'Nuevo Campo', percentage: 0, color: 'gray', icon: 'DollarSign', categories: [{ id: `c_${Date.now()}`, name: 'General', subcategories: [] }], type: 'standard', alertThreshold: 80 }; 
@@ -369,6 +391,15 @@ const BudgetPage = ({ appData, onSave, groupId }: { appData: AppData, onSave: (d
           <span className="font-bold text-xs sm:text-sm tracking-tight">Presupuesto vs Realidad</span>
         </button>
       </div>
+
+      {previousMonthKey && (
+        <div className="mb-6">
+          <button onClick={handleImportPreviousMonth} className="w-full bg-white dark:bg-[#131B2E] px-4 py-3.5 rounded-2xl card-shadow card-shadow-hover transition-all border border-black/5 dark:border-white/5 flex items-center justify-center gap-2.5 text-[#0F172A] dark:text-[#E5E9F0] group active:scale-98 cursor-pointer">
+            <div className="w-9 h-9 shrink-0 rounded-xl bg-[#EEF0FF] dark:bg-[#6366F1]/15 text-[#6366F1] dark:text-[#818CF8] flex items-center justify-center group-hover:scale-110 transition-transform"><History size={18} strokeWidth={1.75} /></div>
+            <span className="font-bold text-xs sm:text-sm tracking-tight text-left">Traer categorías de {formatMonthKey(previousMonthKey)}</span>
+          </button>
+        </div>
+      )}
 
       <div className="flex flex-col gap-6 pb-24">
           {monthData.fields.map(field => (<FieldAccordion key={field.id} field={field} salary={monthData.salary} expenses={monthData.expenses} expensesUsd={monthData.expensesUsd || {}} paidStatus={monthData.paidStatus} extras={monthData.extras} defaultEditing={field.id === newFieldId} totalAllocatedPercentage={totalAllocatedPercentage} onUpdateExpense={handleUpdateExpense} onUpdateExpenseUsd={handleUpdateExpenseUsd} onTogglePaid={handleTogglePaid} onAddExtra={handleAddExtra} onDeleteExtra={handleDeleteExtra} onSaveField={handleSaveField} onDeleteField={handleDeleteField} />))}
